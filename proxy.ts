@@ -16,6 +16,8 @@ const THROTTLED_PATHS = [
   "/api/funding/total",
 ];
 const THROTTLE_WINDOW_MS = 30_000;
+const THROTTLE_MAX_ENTRIES = 5_000;
+const THROTTLE_MAX_BODY_BYTES = 64 * 1024; // 64 KiB cap per cached body
 const throttleMap = new Map<string, { ts: number; body: string }>();
 
 // ── Polling abuse detection ─────────────────────────────────────
@@ -23,6 +25,7 @@ const throttleMap = new Map<string, { ts: number; body: string }>();
 // block them from those endpoints entirely until they stop for 30 min.
 const ABUSE_WINDOW_MS = 8 * 60 * 60_000; // 8 hours
 const ABUSE_COOLDOWN_MS = 30 * 60_000; // 30 min cooldown
+const ABUSE_MAX_ENTRIES = 10_000;
 const abuseTracker = new Map<string, { firstSeen: number; lastSeen: number; blocked: boolean }>();
 
 function checkPollingAbuse(ip: string): boolean {
@@ -31,6 +34,7 @@ function checkPollingAbuse(ip: string): boolean {
 
   if (!entry) {
     abuseTracker.set(ip, { firstSeen: now, lastSeen: now, blocked: false });
+    enforceMapCap(abuseTracker, ABUSE_MAX_ENTRIES);
     return false;
   }
 
@@ -48,6 +52,7 @@ function checkPollingAbuse(ip: string): boolean {
   // If gap > 30 min since last request, reset tracking
   if (now - entry.lastSeen > ABUSE_COOLDOWN_MS) {
     abuseTracker.set(ip, { firstSeen: now, lastSeen: now, blocked: false });
+    enforceMapCap(abuseTracker, ABUSE_MAX_ENTRIES);
     return false;
   }
 
@@ -75,6 +80,19 @@ function cleanupThrottle() {
   // Also clean abuse tracker
   for (const [ip, entry] of abuseTracker) {
     if (now - entry.lastSeen > ABUSE_COOLDOWN_MS * 2) abuseTracker.delete(ip);
+  }
+}
+
+// Hard cap — drop oldest entries (insertion order) when exceeded.
+// Prevents unbounded growth from high-unique-IP traffic (e.g. signup spam).
+function enforceMapCap<K, V>(map: Map<K, V>, cap: number) {
+  if (map.size <= cap) return;
+  const toDrop = map.size - cap;
+  const iter = map.keys();
+  for (let i = 0; i < toDrop; i++) {
+    const { value: k, done } = iter.next();
+    if (done) break;
+    map.delete(k);
   }
 }
 
@@ -153,7 +171,11 @@ export async function proxy(request: NextRequest) {
     try {
       const cloned = response.clone();
       const body = await cloned.text();
-      throttleMap.set(`${ip}:${path}`, { ts: Date.now(), body });
+      // Skip caching oversized payloads to protect memory
+      if (body.length <= THROTTLE_MAX_BODY_BYTES) {
+        throttleMap.set(`${ip}:${path}`, { ts: Date.now(), body });
+        enforceMapCap(throttleMap, THROTTLE_MAX_ENTRIES);
+      }
     } catch {
       // Don't break if we can't cache
     }

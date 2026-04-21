@@ -29,6 +29,12 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // Eagerly disconnect realtime — middleware only needs Auth/REST.
+  // Each createServerClient() call allocates a RealtimeClient with WebSocket
+  // state; since middleware runs on every request, skipping this leaks
+  // memory proportional to traffic (see server.ts for the same fix).
+  supabase.realtime.disconnect();
+
   // Refresh session if expired - required for Server Components
   const {
     data: { user },
