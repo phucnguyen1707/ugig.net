@@ -12,6 +12,7 @@ import {
   Zap,
   TrendingUp,
   Pencil,
+  Github,
 } from "lucide-react";
 
 export const metadata = {
@@ -56,12 +57,20 @@ export default async function SellerSkillsPage() {
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-3xl font-bold">My Skills</h1>
-            <Link href="/dashboard/skills/new">
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                New Skill
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/dashboard/skills/import">
+                <Button size="sm" variant="outline">
+                  <Github className="h-4 w-4 mr-2" />
+                  Import from Repo
+                </Button>
+              </Link>
+              <Link href="/dashboard/skills/new">
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Skill
+                </Button>
+              </Link>
+            </div>
           </div>
           <p className="text-muted-foreground mb-8">
             Manage your skill listings on the marketplace.
