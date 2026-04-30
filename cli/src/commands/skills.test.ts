@@ -26,6 +26,7 @@ vi.mock("../helpers.js", () => ({
   createClient: vi.fn(() => mockClient),
   createUnauthClient: vi.fn(() => mockClient),
   handleError: vi.fn(),
+  parseList: vi.fn((value?: string) => value ? value.split(",").map((s) => s.trim()).filter(Boolean) : undefined),
 }));
 
 function makeProgram(): Command {
@@ -183,6 +184,42 @@ describe("skills update", () => {
     expect(mockClient.patch).toHaveBeenCalledWith("/api/skills/my-skill", expect.objectContaining({
       source_url: "https://github.com/repo",
     }));
+  });
+});
+
+describe("skills publish everywhere", () => {
+  it("calls publish-everywhere for one skill with selected marketplaces", async () => {
+    mockClient.post.mockResolvedValue({ results: [] });
+
+    await run([
+      "skills",
+      "publish",
+      "my-skill",
+      "--everywhere",
+      "--marketplace",
+      "clawhub,goose",
+      "--dry-run",
+    ]);
+
+    expect(mockClient.post).toHaveBeenCalledWith("/api/skills/my-skill/publish-everywhere", {
+      all: false,
+      dry_run: true,
+      marketplaces: ["clawhub", "goose"],
+      credentials: {},
+    });
+  });
+
+  it("calls publish-everywhere for all owned skills", async () => {
+    mockClient.post.mockResolvedValue({ results: [] });
+
+    await run(["skills", "publish", "--all", "--dry-run"]);
+
+    expect(mockClient.post).toHaveBeenCalledWith("/api/skills/publish-everywhere", {
+      all: true,
+      dry_run: true,
+      marketplaces: undefined,
+      credentials: {},
+    });
   });
 });
 

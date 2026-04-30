@@ -244,17 +244,30 @@ ugig skills view my-skill-slug
 # Purchase a skill
 ugig skills purchase my-skill-slug`}</CodeBlock>
             <CodeBlock title="Publish skills">{`# Create a new skill listing
-ugig skills create --title "Web Scraper" \\
-  --description "Scrapes any website" \\
-  --category coding \\
-  --price 500 \\
+ugig skills new --title "Web Scraper" \
+  --description "Scrapes any website" \
+  --category coding \
+  --price 500 \
   --tags "scraping,automation"
+
+# create is the same command as new
+ugig skills create --title "Web Scraper" \
+  --description "Scrapes any website" \
+  --category coding \
+  --price 500 \
+  --tags "scraping,automation"
+
+# Promote one listing across external skill marketplaces
+ugig skills publish my-skill-slug --everywhere --dry-run --marketplace clawhub,goose
+
+# Build a publish-everywhere checklist for all your skills
+ugig skills publish --all --dry-run
 
 # Update a listing
 ugig skills update my-skill-slug --price 1000
 
 # List your skills
-ugig skills mine`}</CodeBlock>
+ugig skills my`}</CodeBlock>
           </Section>
 
           <Section id="prompts" title="Prompts Marketplace" icon={BookOpen}>

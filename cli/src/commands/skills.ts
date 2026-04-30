@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import { readFileSync } from "fs";
 import { basename } from "path";
 import ora from "ora";
-import { createClient, handleError, type GlobalOpts } from "../helpers.js";
+import { createClient, handleError, parseList, type GlobalOpts } from "../helpers.js";
 import {
   printTable,
   printDetail,
@@ -11,6 +11,40 @@ import {
   relativeDate,
   truncate,
 } from "../output.js";
+
+type PublishResultRow = {
+  marketplace?: string;
+  name?: string;
+  status?: string;
+  url?: string;
+  command?: string;
+  note?: string;
+};
+
+function parseCredentials(values: string[] | undefined): Record<string, string> {
+  const credentials: Record<string, string> = {};
+  for (const value of values || []) {
+    const idx = value.indexOf("=");
+    if (idx <= 0) continue;
+    credentials[value.slice(0, idx)] = value.slice(idx + 1);
+  }
+  return credentials;
+}
+
+function printPublishEverywhereResults(results: Array<Record<string, unknown>>): void {
+  for (const item of results) {
+    const slug = String(item.slug || "");
+    const title = String(item.title || slug || "skill");
+    console.log(`\n${title}${slug ? ` (${slug})` : ""}`);
+    const rows = (Array.isArray(item.results) ? item.results : []) as PublishResultRow[];
+    for (const row of rows) {
+      console.log(`  ${row.name || row.marketplace}: ${row.status || "unknown"}`);
+      if (row.url) console.log(`    URL: ${row.url}`);
+      if (row.command) console.log(`    Command: ${row.command}`);
+      if (row.note) console.log(`    Note: ${row.note}`);
+    }
+  }
+}
 
 export function registerSkillsCommands(program: Command): void {
   const skills = program.command("skills").description("Manage skill marketplace listings");
@@ -94,6 +128,7 @@ export function registerSkillsCommands(program: Command): void {
 
   skills
     .command("create")
+    .alias("new")
     .description("Create a new skill listing")
     .requiredOption("--title <title>", "Skill title")
     .requiredOption("--description <text>", "Skill description")
@@ -384,29 +419,80 @@ export function registerSkillsCommands(program: Command): void {
       }
     });
 
-  // ── Publish (activate) a skill ──────────────────────────────────
+  // ── Publish / publish everywhere ────────────────────────────────
 
   skills
-    .command("publish <slug>")
-    .description("Publish a skill listing (set status to active)")
-    .action(async (slug: string) => {
-      const opts = program.opts() as GlobalOpts;
-      const spinner = opts.json ? null : ora(`Publishing ${slug}...`).start();
-      try {
+    .command("publish [slug]")
+    .description("Publish a skill listing, or promote skills across external marketplaces")
+    .option("--everywhere", "Promote one skill across known marketplaces")
+    .option("--all", "Promote all of your skill listings across known marketplaces")
+    .option("--marketplace <ids>", "Comma-separated marketplace IDs to target")
+    .option("--dry-run", "Return commands/checklist without attempting live marketplace actions", true)
+    .option("--no-dry-run", "Allow server-side live publish attempts when a marketplace integration supports it")
+    .option("--credential <key=value...>", "Per-request marketplace credential hints; never stored")
+    .action(
+      async (
+        slug: string | undefined,
+        cmdOpts: {
+          everywhere?: boolean;
+          all?: boolean;
+          marketplace?: string;
+          dryRun?: boolean;
+          credential?: string[];
+        },
+      ) => {
+        const opts = program.opts() as GlobalOpts;
         const client = createClient(opts);
-        const result = await client.patch<{
-          listing: Record<string, unknown>;
-        }>(`/api/skills/${slug}`, { status: "active" });
-        spinner?.stop();
-        printSuccess(`Skill published: ${slug}`, opts as OutputOptions);
-        printDetail(result.listing, opts as OutputOptions);
-      } catch (err) {
-        spinner?.fail("Failed");
-        handleError(err, opts as OutputOptions);
-      }
-    });
+        const credentials = parseCredentials(cmdOpts.credential);
+        const marketplaces = parseList(cmdOpts.marketplace);
 
-    // (publish-all removed — listings go live on create now)
+        if (cmdOpts.all || cmdOpts.everywhere) {
+          const endpoint = slug
+            ? `/api/skills/${slug}/publish-everywhere`
+            : "/api/skills/publish-everywhere";
+          const spinner = opts.json ? null : ora("Building publish-everywhere plan...").start();
+          try {
+            const result = await client.post<{
+              dry_run?: boolean;
+              results: Array<Record<string, unknown>>;
+            }>(endpoint, {
+              all: Boolean(cmdOpts.all || !slug),
+              dry_run: cmdOpts.dryRun !== false,
+              marketplaces,
+              credentials,
+            });
+            spinner?.stop();
+            if (opts.json) {
+              console.log(JSON.stringify(result, null, 2));
+            } else {
+              printPublishEverywhereResults(result.results);
+            }
+          } catch (err) {
+            spinner?.fail("Failed");
+            handleError(err, opts as OutputOptions);
+          }
+          return;
+        }
+
+        if (!slug) {
+          handleError(new Error("Missing skill slug. Use `ugig skills publish <slug>` or `ugig skills publish --all --dry-run`."), opts as OutputOptions);
+          return;
+        }
+
+        const spinner = opts.json ? null : ora(`Publishing ${slug}...`).start();
+        try {
+          const result = await client.patch<{
+            listing: Record<string, unknown>;
+          }>(`/api/skills/${slug}`, { status: "active" });
+          spinner?.stop();
+          printSuccess(`Skill published: ${slug}`, opts as OutputOptions);
+          printDetail(result.listing, opts as OutputOptions);
+        } catch (err) {
+          spinner?.fail("Failed");
+          handleError(err, opts as OutputOptions);
+        }
+      },
+    );
 
   // ── Delete listing ─────────────────────────────────────────────
 
