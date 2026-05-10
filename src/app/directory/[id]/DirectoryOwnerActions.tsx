@@ -16,6 +16,8 @@ interface DirectoryOwnerActionsProps {
     description: string | null;
     tags: string[];
     logo_url: string | null;
+    banner_url: string | null;
+    screenshot_url: string | null;
     status: string;
   };
 }
@@ -28,6 +30,8 @@ export function DirectoryOwnerActions({ listing }: DirectoryOwnerActionsProps) {
   const [description, setDescription] = useState(listing.description || "");
   const [tagsInput, setTagsInput] = useState((listing.tags || []).join(", "));
   const [logoUrl, setLogoUrl] = useState(listing.logo_url || "");
+  const [bannerUrl, setBannerUrl] = useState(listing.banner_url || "");
+  const [screenshotUrl, setScreenshotUrl] = useState(listing.screenshot_url || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -50,6 +54,8 @@ export function DirectoryOwnerActions({ listing }: DirectoryOwnerActionsProps) {
         description: description || undefined,
         tags,
         logo_url: logoUrl || null,
+        banner_url: bannerUrl || null,
+        screenshot_url: screenshotUrl || null,
       }),
     });
 
@@ -113,6 +119,14 @@ export function DirectoryOwnerActions({ listing }: DirectoryOwnerActionsProps) {
           <div>
             <Label htmlFor="edit-logo">Logo URL</Label>
             <Input id="edit-logo" type="url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="edit-banner">Banner URL</Label>
+            <Input id="edit-banner" type="url" value={bannerUrl} onChange={(e) => setBannerUrl(e.target.value)} placeholder="https://example.com/banner.png" />
+          </div>
+          <div>
+            <Label htmlFor="edit-screenshot">Homepage Screenshot URL</Label>
+            <Input id="edit-screenshot" type="url" value={screenshotUrl} onChange={(e) => setScreenshotUrl(e.target.value)} placeholder="https://example.com/screenshot.png" />
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={loading}>{loading ? "Saving..." : "Save Changes"}</Button>

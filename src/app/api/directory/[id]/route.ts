@@ -9,6 +9,8 @@ const updateListingSchema = z.object({
   description: z.string().max(500).optional(),
   tags: z.array(z.string().max(50)).max(10).optional(),
   logo_url: z.string().url().nullable().optional(),
+  banner_url: z.string().url().nullable().optional(),
+  screenshot_url: z.string().url().nullable().optional(),
   status: z.enum(["active", "hidden"]).optional(),
 });
 
