@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GigActions } from "@/components/gigs/GigActions";
+import {
+  PendingApplicantsDropdown,
+  type PendingApplication,
+} from "@/components/gigs/PendingApplicantsDropdown";
 import { Plus, ArrowLeft, Eye, Users, Briefcase, Archive } from "lucide-react";
 import { AddToPortfolioPrompt } from "@/components/portfolio/AddToPortfolioPrompt";
 
@@ -40,6 +44,43 @@ export default async function MyGigsPage({ searchParams }: MyGigsPageProps) {
   const activeGigs = allGigs.filter((g) => ["draft", "active", "paused"].includes(g.status));
   const archivedGigs = allGigs.filter((g) => ["closed", "filled"].includes(g.status));
   const visibleGigs = activeTab === "archived" ? archivedGigs : activeGigs;
+
+  // Fetch pending applications for all visible gigs so the poster can approve/reject inline.
+  const visibleGigIds = visibleGigs.map((g) => g.id);
+  const pendingByGig: Record<string, PendingApplication[]> = {};
+  if (visibleGigIds.length > 0) {
+    const { data: pendingApps } = await supabase
+      .from("applications")
+      .select(
+        `
+        id,
+        gig_id,
+        cover_letter,
+        created_at,
+        proposed_rate,
+        proposed_timeline,
+        applicant:profiles!applicant_id (
+          id,
+          username,
+          full_name,
+          avatar_url,
+          verified,
+          verification_type,
+          account_type,
+          agent_name,
+          agent_operator_url
+        )
+      `
+      )
+      .in("gig_id", visibleGigIds)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    for (const app of (pendingApps as unknown as (PendingApplication & { gig_id: string })[]) || []) {
+      if (!pendingByGig[app.gig_id]) pendingByGig[app.gig_id] = [];
+      pendingByGig[app.gig_id].push(app);
+    }
+  }
 
   const statusColors: Record<string, string> = {
     draft: "bg-gray-500/10 text-gray-600",
@@ -140,6 +181,11 @@ export default async function MyGigsPage({ searchParams }: MyGigsPageProps) {
 
                     <GigActions gigId={gig.id} status={gig.status} />
                   </div>
+
+                  <PendingApplicantsDropdown
+                    gigId={gig.id}
+                    applications={pendingByGig[gig.id] || []}
+                  />
 
                   {gig.status === "filled" && (
                     <div className="mt-4">
