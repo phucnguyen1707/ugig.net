@@ -59,7 +59,7 @@ export function GigCard({
     const coin = gig.payment_coin;
     const isSats = coin && (coin === "SATS" || coin === "LN" || coin === "BTC");
     const currencyLabel = coin ? (isSats ? "sats" : coin) : "USD";
-    const coinNote = coin ? ` (${coin})` : "";
+    const coinNote = coin ? ` (paid in ${coin})` : "";
 
     const fmt = (val: number) => {
       if (isSats) return `${val.toLocaleString()} sats`;

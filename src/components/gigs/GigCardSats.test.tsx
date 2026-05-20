@@ -30,7 +30,7 @@ function getBudgetDisplay(gig: {
 
   const coin = gig.payment_coin;
   const isSats = coin && (coin === "SATS" || coin === "LN" || coin === "BTC");
-  const coinNote = coin ? ` (${coin})` : "";
+  const coinNote = coin ? ` (paid in ${coin})` : "";
 
   const fmt = (val: number) => {
     if (isSats) return `${val.toLocaleString()} sats`;
@@ -92,7 +92,7 @@ describe("GigCard budget display with sats/lightning", () => {
       budget_unit: null,
       payment_coin: "ETH",
     });
-    expect(result).toBe("$500 USD - $1,000 USD (ETH)");
+    expect(result).toBe("$500 USD - $1,000 USD (paid in ETH)");
   });
 
   it("shows USD with no payment coin", () => {
@@ -170,6 +170,6 @@ describe("GigCard budget display with sats/lightning", () => {
       budget_unit: null,
       payment_coin: "SOL",
     });
-    expect(result).toContain("(SOL)");
+    expect(result).toContain("(paid in SOL)");
   });
 });

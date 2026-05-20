@@ -279,7 +279,7 @@ export default async function GigPage({ params }: GigPageProps) {
 
     const coin = gig.payment_coin;
     const isSats = coin && (coin === "SATS" || coin === "LN" || coin === "BTC");
-    const coinNote = coin ? ` (${coin})` : "";
+    const coinNote = coin ? ` (paid in ${coin})` : "";
 
     const fmt = (val: number) => {
       if (isSats) return `${val.toLocaleString()} sats`;
