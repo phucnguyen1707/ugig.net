@@ -41,6 +41,7 @@ next-env.d.ts
 *.swo
 
 # Local agent/tooling state
+.codex
 .codex/
 
 # Supabase
