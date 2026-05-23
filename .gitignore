@@ -40,6 +40,9 @@ next-env.d.ts
 *.swp
 *.swo
 
+# Local agent/tooling state
+.codex/
+
 # Supabase
 supabase/.temp/
 .env.prod
