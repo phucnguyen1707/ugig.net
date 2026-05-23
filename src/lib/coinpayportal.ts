@@ -4,7 +4,15 @@ const COINPAY_API_URL = "https://coinpayportal.com/api";
 
 export interface CoinPayWebhookPayload {
   id: string;
-  type: "payment.confirmed" | "payment.forwarded" | "payment.expired" | "payment.failed" | "escrow.funded" | "escrow.released" | "escrow.refunded" | "escrow.disputed";
+  type:
+    | "payment.confirmed"
+    | "payment.forwarded"
+    | "payment.expired"
+    | "payment.failed"
+    | "escrow.funded"
+    | "escrow.released"
+    | "escrow.refunded"
+    | "escrow.disputed";
   data: {
     payment_id: string;
     status: string;
@@ -128,11 +136,10 @@ export function verifyWebhookSignature(
 /**
  * Create a payment request with CoinPayPortal
  */
-export async function createPayment(
-  options: CreatePaymentOptions
-): Promise<CreatePaymentResponse> {
+export async function createPayment(options: CreatePaymentOptions): Promise<CreatePaymentResponse> {
   const apiKey = process.env.COINPAY_API_KEY;
   const merchantId = options.business_id || process.env.COINPAY_MERCHANT_ID;
+  const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ugig.net";
 
   if (!apiKey || !merchantId) {
     throw new Error("CoinPayPortal credentials not configured");
@@ -144,23 +151,55 @@ export async function createPayment(
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
+    cache: "no-store",
     body: JSON.stringify({
       business_id: merchantId,
       amount_usd: options.amount_usd,
+      payment_method: "crypto",
       currency: options.currency,
       description: options.description,
+      success_url: options.redirect_url || appUrl,
+      cancel_url: options.redirect_url || appUrl,
       redirect_url: options.redirect_url,
-      webhook_url: `${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ugig.net"}/api/webhooks/coinpay`,
+      webhook_url: `${appUrl}/api/webhooks/coinpay`,
       metadata: options.metadata,
     }),
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to create payment");
+    const text = await response.text();
+    console.error(`[coinpayportal] create payment failed ${response.status}: ${text}`);
+
+    let message = text;
+    try {
+      const error = JSON.parse(text) as {
+        message?: string;
+        error?: string;
+      };
+      message = error.message || error.error || text;
+    } catch {
+      // Keep the raw text when CoinPay does not return JSON.
+    }
+
+    throw new Error(
+      message
+        ? `CoinPay create failed ${response.status}: ${message.slice(0, 300)}`
+        : `CoinPay create failed ${response.status}`
+    );
   }
 
-  return response.json();
+  const json = await response.json();
+  console.log(
+    "[coinpayportal] create payment response:",
+    JSON.stringify({
+      success: json?.success,
+      payment_id: json?.payment_id || json?.payment?.id,
+      currency: json?.currency || json?.payment?.currency,
+      has_address: Boolean(json?.address || json?.payment?.payment_address),
+      has_checkout_url: Boolean(json?.checkout_url || json?.payment?.checkout_url),
+    })
+  );
+  return json;
 }
 
 /**
@@ -271,7 +310,11 @@ function extractWalletCurrenciesFromBusiness(
   ];
   const wallets = new Map<string, BusinessWalletCurrency>();
 
-  const addWallet = (currency: string | null, address: string | null, source?: Record<string, unknown>) => {
+  const addWallet = (
+    currency: string | null,
+    address: string | null,
+    source?: Record<string, unknown>
+  ) => {
     if (!currency || !address) return;
     const key = normalizeCoinSymbol(currency);
     if (!key || wallets.has(key)) return;
@@ -280,9 +323,7 @@ function extractWalletCurrenciesFromBusiness(
       currency: key,
       address,
       is_active:
-        source?.is_active === false ||
-        source?.active === false ||
-        source?.enabled === false
+        source?.is_active === false || source?.active === false || source?.enabled === false
           ? false
           : true,
     });
@@ -297,7 +338,13 @@ function extractWalletCurrenciesFromBusiness(
         const record = item as Record<string, unknown>;
         addWallet(
           getStringValue(record, ["currency", "symbol", "coin", "chain", "network", "id"]),
-          getStringValue(record, ["address", "wallet_address", "walletAddress", "deposit_address", "depositAddress"]),
+          getStringValue(record, [
+            "address",
+            "wallet_address",
+            "walletAddress",
+            "deposit_address",
+            "depositAddress",
+          ]),
           record
         );
       }
@@ -310,8 +357,15 @@ function extractWalletCurrenciesFromBusiness(
       } else if (value && typeof value === "object") {
         const record = value as Record<string, unknown>;
         addWallet(
-          getStringValue(record, ["currency", "symbol", "coin", "chain", "network", "id"]) || currency,
-          getStringValue(record, ["address", "wallet_address", "walletAddress", "deposit_address", "depositAddress"]),
+          getStringValue(record, ["currency", "symbol", "coin", "chain", "network", "id"]) ||
+            currency,
+          getStringValue(record, [
+            "address",
+            "wallet_address",
+            "walletAddress",
+            "deposit_address",
+            "depositAddress",
+          ]),
           record
         );
       }
@@ -321,9 +375,11 @@ function extractWalletCurrenciesFromBusiness(
   return [...wallets.values()].filter((wallet) => wallet.is_active !== false);
 }
 
-export async function getBusinessWalletCurrencies(options: {
-  business_id?: string;
-} = {}): Promise<BusinessWalletCurrency[]> {
+export async function getBusinessWalletCurrencies(
+  options: {
+    business_id?: string;
+  } = {}
+): Promise<BusinessWalletCurrency[]> {
   const apiKey = process.env.COINPAY_API_KEY;
   const businessId = options.business_id || process.env.COINPAY_MERCHANT_ID;
 
@@ -365,10 +421,12 @@ export async function getBusinessWalletCurrencies(options: {
  * Fetch the business-specific active wallet coins from CoinPayPortal. This keeps
  * invoice payment options aligned with the merchant's configured wallets.
  */
-export async function getSupportedCoins(options: {
-  business_id?: string;
-  active_only?: boolean;
-} = {}): Promise<SupportedCoinsResponse> {
+export async function getSupportedCoins(
+  options: {
+    business_id?: string;
+    active_only?: boolean;
+  } = {}
+): Promise<SupportedCoinsResponse> {
   const apiKey = process.env.COINPAY_API_KEY;
   const businessId = options.business_id || process.env.COINPAY_MERCHANT_ID;
 
@@ -501,9 +559,7 @@ export interface EscrowStatusResponse {
 /**
  * Create an escrow via CoinPayPortal
  */
-export async function createEscrow(
-  options: CreateEscrowOptions
-): Promise<EscrowResponse> {
+export async function createEscrow(options: CreateEscrowOptions): Promise<EscrowResponse> {
   const apiKey = process.env.COINPAY_API_KEY;
   const merchantId = process.env.COINPAY_MERCHANT_ID;
 
@@ -597,9 +653,7 @@ export interface InvoiceResponse {
 /**
  * Create an invoice via CoinPayPortal
  */
-export async function createInvoice(
-  options: CreateInvoiceOptions
-): Promise<InvoiceResponse> {
+export async function createInvoice(options: CreateInvoiceOptions): Promise<InvoiceResponse> {
   const apiKey = process.env.COINPAY_API_KEY;
   const merchantId = process.env.COINPAY_MERCHANT_ID;
 

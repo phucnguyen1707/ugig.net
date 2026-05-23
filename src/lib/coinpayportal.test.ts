@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import crypto from "crypto";
 import {
+  createPayment,
   createInvoice,
   sendInvoice,
   getBusinessWalletCurrencies,
@@ -16,7 +17,13 @@ describe("verifyWebhookSignature", () => {
   const payload = JSON.stringify({
     id: "evt_pay_123_1705315800",
     type: "payment.confirmed",
-    data: { payment_id: "123", status: "confirmed", amount_crypto: "0.05", amount_usd: "150.00", currency: "ETH" },
+    data: {
+      payment_id: "123",
+      status: "confirmed",
+      amount_crypto: "0.05",
+      amount_usd: "150.00",
+      currency: "ETH",
+    },
     created_at: "2024-01-15T10:30:00Z",
     business_id: "biz_xyz789",
   });
@@ -24,10 +31,7 @@ describe("verifyWebhookSignature", () => {
   it("verifies valid signature", () => {
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const signedPayload = `${timestamp}.${payload}`;
-    const signature = crypto
-      .createHmac("sha256", secret)
-      .update(signedPayload)
-      .digest("hex");
+    const signature = crypto.createHmac("sha256", secret).update(signedPayload).digest("hex");
 
     const signatureHeader = `t=${timestamp},v1=${signature}`;
     expect(verifyWebhookSignature(payload, signatureHeader, secret)).toBe(true);
@@ -48,10 +52,7 @@ describe("verifyWebhookSignature", () => {
   it("rejects old timestamps (older than 300 seconds)", () => {
     const oldTimestamp = (Math.floor(Date.now() / 1000) - 400).toString();
     const signedPayload = `${oldTimestamp}.${payload}`;
-    const signature = crypto
-      .createHmac("sha256", secret)
-      .update(signedPayload)
-      .digest("hex");
+    const signature = crypto.createHmac("sha256", secret).update(signedPayload).digest("hex");
 
     const signatureHeader = `t=${oldTimestamp},v1=${signature}`;
     expect(verifyWebhookSignature(payload, signatureHeader, secret)).toBe(false);
@@ -60,10 +61,7 @@ describe("verifyWebhookSignature", () => {
   it("rejects future timestamps (more than 300 seconds ahead)", () => {
     const futureTimestamp = (Math.floor(Date.now() / 1000) + 400).toString();
     const signedPayload = `${futureTimestamp}.${payload}`;
-    const signature = crypto
-      .createHmac("sha256", secret)
-      .update(signedPayload)
-      .digest("hex");
+    const signature = crypto.createHmac("sha256", secret).update(signedPayload).digest("hex");
 
     const signatureHeader = `t=${futureTimestamp},v1=${signature}`;
     expect(verifyWebhookSignature(payload, signatureHeader, secret)).toBe(false);
@@ -72,10 +70,7 @@ describe("verifyWebhookSignature", () => {
   it("accepts timestamps within 300 seconds", () => {
     const recentTimestamp = (Math.floor(Date.now() / 1000) - 100).toString();
     const signedPayload = `${recentTimestamp}.${payload}`;
-    const signature = crypto
-      .createHmac("sha256", secret)
-      .update(signedPayload)
-      .digest("hex");
+    const signature = crypto.createHmac("sha256", secret).update(signedPayload).digest("hex");
 
     const signatureHeader = `t=${recentTimestamp},v1=${signature}`;
     expect(verifyWebhookSignature(payload, signatureHeader, secret)).toBe(true);
@@ -208,6 +203,99 @@ describe("CoinPayPortal supported coins API", () => {
       "CoinPayPortal payments do not support LN"
     );
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("CoinPayPortal payment API", () => {
+  const originalApiKey = process.env.COINPAY_API_KEY;
+  const originalMerchantId = process.env.COINPAY_MERCHANT_ID;
+  const originalAppUrl = process.env.APP_URL;
+
+  beforeEach(() => {
+    process.env.COINPAY_API_KEY = "cp_live_" + "a".repeat(32);
+    process.env.COINPAY_MERCHANT_ID = "biz_123";
+    process.env.APP_URL = "https://ugig.net";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          success: true,
+          payment_id: "pay_123",
+          address: "So11111111111111111111111111111111111111112",
+          amount_crypto: 0.01,
+          currency: "sol",
+          expires_at: "2030-01-01T00:00:00Z",
+        }),
+      })
+    );
+  });
+
+  afterEach(() => {
+    if (originalApiKey === undefined) {
+      delete process.env.COINPAY_API_KEY;
+    } else {
+      process.env.COINPAY_API_KEY = originalApiKey;
+    }
+
+    if (originalMerchantId === undefined) {
+      delete process.env.COINPAY_MERCHANT_ID;
+    } else {
+      process.env.COINPAY_MERCHANT_ID = originalMerchantId;
+    }
+
+    if (originalAppUrl === undefined) {
+      delete process.env.APP_URL;
+    } else {
+      process.env.APP_URL = originalAppUrl;
+    }
+
+    vi.unstubAllGlobals();
+  });
+
+  it("creates crypto payments with the CoinPay payload used by funding", async () => {
+    await createPayment({
+      amount_usd: 2,
+      currency: "sol",
+      description: "Bounty payout",
+      redirect_url: "https://ugig.net/bounties/bounty-1",
+      metadata: { type: "bounty_payout" },
+    });
+
+    const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
+    const body = JSON.parse(init.body as string);
+
+    expect(init).toMatchObject({
+      method: "POST",
+      cache: "no-store",
+    });
+    expect(body).toMatchObject({
+      business_id: "biz_123",
+      amount_usd: 2,
+      payment_method: "crypto",
+      currency: "sol",
+      description: "Bounty payout",
+      success_url: "https://ugig.net/bounties/bounty-1",
+      cancel_url: "https://ugig.net/bounties/bounty-1",
+      redirect_url: "https://ugig.net/bounties/bounty-1",
+      webhook_url: "https://ugig.net/api/webhooks/coinpay",
+      metadata: { type: "bounty_payout" },
+    });
+  });
+
+  it("includes the raw CoinPay failure body in thrown errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: vi.fn().mockResolvedValue('{"error":"bad currency"}'),
+      })
+    );
+
+    await expect(createPayment({ amount_usd: 2, currency: "sol" })).rejects.toThrow(
+      "CoinPay create failed 400: bad currency"
+    );
   });
 });
 
