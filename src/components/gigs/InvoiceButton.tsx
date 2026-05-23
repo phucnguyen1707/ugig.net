@@ -3,15 +3,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  FileText,
-  Loader2,
-  CheckCircle2,
-  Clock,
-  Copy,
-  DollarSign,
-  Send,
-} from "lucide-react";
+import { FileText, Loader2, CheckCircle2, Clock, DollarSign, Send } from "lucide-react";
+import { CryptoPaymentBox } from "@/components/payments/CryptoPaymentBox";
 
 interface GigInvoice {
   id: string;
@@ -65,9 +58,7 @@ export function InvoiceButton({
       .then((d) => {
         if (d.data) {
           // Filter to this application's invoices
-          const appInvoices = d.data.filter(
-            (inv: any) => inv.application_id === applicationId
-          );
+          const appInvoices = d.data.filter((inv: any) => inv.application_id === applicationId);
           setInvoices(appInvoices);
         }
       })
@@ -186,58 +177,28 @@ export function InvoiceButton({
     return (
       <div className="space-y-3">
         {invoices.map((inv) => (
-          <div
-            key={inv.id}
-            className="border border-border rounded-lg p-4 space-y-2"
-          >
+          <div key={inv.id} className="border border-border rounded-lg p-4 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">${inv.amount_usd}</span>
-                <span className="text-sm text-muted-foreground">
-                  {inv.currency}
-                </span>
+                <span className="text-sm text-muted-foreground">{inv.currency}</span>
               </div>
               {statusBadge(inv.status)}
             </div>
 
-            {inv.notes && (
-              <p className="text-sm text-muted-foreground">{inv.notes}</p>
-            )}
+            {inv.notes && <p className="text-sm text-muted-foreground">{inv.notes}</p>}
 
             {/* Poster: keep payment UX inside uGig. */}
             {isPoster && inv.status === "sent" && inv.metadata?.payment_address && (
-              <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Payment address
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 gap-1.5 px-2 text-xs"
-                    onClick={() =>
-                      navigator.clipboard?.writeText(
-                        inv.metadata?.payment_address || ""
-                      )
-                    }
-                  >
-                    <Copy className="h-3 w-3" />
-                    Copy
-                  </Button>
-                </div>
-                <code className="block break-all rounded bg-background px-2 py-1.5 text-xs">
-                  {inv.metadata.payment_address}
-                </code>
-                <p className="text-xs text-muted-foreground">
-                  Send{" "}
-                  {inv.metadata.amount_crypto
-                    ? `${inv.metadata.amount_crypto} ${inv.metadata.payment_currency || ""}`.trim()
-                    : inv.metadata.payment_currency || "the selected coin"}{" "}
-                  to this address.
-                </p>
-              </div>
+              <CryptoPaymentBox
+                title="Invoice payment"
+                paymentAddress={inv.metadata.payment_address || ""}
+                amountCrypto={inv.metadata.amount_crypto}
+                paymentCurrency={inv.metadata.payment_currency}
+                expiresAt={inv.metadata.expires_at}
+                checkoutUrl={inv.pay_url || undefined}
+              />
             )}
 
             {isPoster && inv.status === "sent" && !inv.metadata?.payment_address && (
@@ -253,22 +214,13 @@ export function InvoiceButton({
               </p>
             )}
 
-            {inv.status === "paid" && (
-              <p className="text-sm text-green-600">
-                ✅ Invoice paid!
-              </p>
-            )}
+            {inv.status === "paid" && <p className="text-sm text-green-600">✅ Invoice paid!</p>}
           </div>
         ))}
 
         {/* Worker can send another invoice */}
         {isWorker && !showForm && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowForm(true)}
-            className="gap-2"
-          >
+          <Button variant="outline" size="sm" onClick={() => setShowForm(true)} className="gap-2">
             <FileText className="h-4 w-4" />
             Send Another Invoice
           </Button>
@@ -318,11 +270,7 @@ export function InvoiceButton({
     }
 
     return (
-      <Button
-        onClick={() => setShowForm(true)}
-        variant="default"
-        className="gap-2"
-      >
+      <Button onClick={() => setShowForm(true)} variant="default" className="gap-2">
         <FileText className="h-4 w-4" />
         Send Invoice{budgetAmount ? ` ($${budgetAmount})` : ""}
       </Button>
@@ -363,9 +311,7 @@ function InvoiceForm({
       <p className="font-medium text-sm">Create Invoice</p>
 
       <div className="space-y-1">
-        <label className="text-xs font-medium text-muted-foreground">
-          Amount (USD)
-        </label>
+        <label className="text-xs font-medium text-muted-foreground">Amount (USD)</label>
         <input
           type="number"
           value={amount}
@@ -378,9 +324,7 @@ function InvoiceForm({
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs font-medium text-muted-foreground">
-          Notes (optional)
-        </label>
+        <label className="text-xs font-medium text-muted-foreground">Notes (optional)</label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -391,9 +335,7 @@ function InvoiceForm({
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs font-medium text-muted-foreground">
-          Due Date (optional)
-        </label>
+        <label className="text-xs font-medium text-muted-foreground">Due Date (optional)</label>
         <input
           type="date"
           value={dueDate}
@@ -405,12 +347,7 @@ function InvoiceForm({
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex gap-2">
-        <Button
-          onClick={onSubmit}
-          disabled={isCreating || !amount}
-          className="flex-1"
-          size="sm"
-        >
+        <Button onClick={onSubmit} disabled={isCreating || !amount} className="flex-1" size="sm">
           {isCreating ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (

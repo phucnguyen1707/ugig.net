@@ -23,9 +23,7 @@ function signPayload(payload: Record<string, any>, secret: string): string {
   const ts = Math.floor(Date.now() / 1000);
   const payloadString = JSON.stringify(payload);
   const signedPayload = `${ts}.${payloadString}`;
-  const signature = createHmac("sha256", secret)
-    .update(signedPayload)
-    .digest("hex");
+  const signature = createHmac("sha256", secret).update(signedPayload).digest("hex");
   return `t=${ts},v1=${signature}`;
 }
 
@@ -114,7 +112,10 @@ describe("POST /api/payments/coinpayportal/webhook", () => {
       status: "confirmed",
     });
 
-    const paymentChain = chainResult({ data: { id: "local-1", user_id: "user-1", type: "tip", amount_usd: 1 }, error: null });
+    const paymentChain = chainResult({
+      data: { id: "local-1", user_id: "user-1", type: "tip", amount_usd: 1 },
+      error: null,
+    });
     const updateChain = chainResult({ data: null, error: null });
     const notifChain = chainResult({ data: null, error: null });
 
@@ -172,8 +173,118 @@ describe("POST /api/payments/coinpayportal/webhook", () => {
 
     expect(res.status).toBe(200);
     expect(mockFrom).toHaveBeenCalledWith("gig_invoices");
-    expect(invoiceChain.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "paid" })
+    expect(invoiceChain.update).toHaveBeenCalledWith(expect.objectContaining({ status: "paid" }));
+  });
+
+  it("marks bounty submissions paid when webhook payment is not in payments or gig invoices", async () => {
+    const payload = makeWebhookPayload("payment.confirmed", {
+      payment_id: "cp-pay-bounty-1",
+      amount_usd: 25,
+      amount_crypto: 0.5,
+      currency: "SOL",
+      tx_hash: "tx-1",
+      status: "confirmed",
+    });
+
+    const missingPaymentChain = chainResult({
+      data: null,
+      error: { code: "PGRST116", message: "No rows" },
+    });
+    const missingInvoiceChain = chainResult({
+      data: null,
+      error: { code: "PGRST116", message: "No rows" },
+    });
+    const bountySubmissionChain = chainResult({
+      data: {
+        id: "sub-1",
+        bounty_id: "bounty-1",
+        submitter_id: "worker-1",
+        metadata: { payment_address: "SolAddress" },
+      },
+      error: null,
+    });
+    const bountyChain = chainResult({
+      data: { id: "bounty-1", title: "Bounty fix", creator_id: "poster-1", payout_usd: 25 },
+      error: null,
+    });
+    const okChain = chainResult({ data: null, error: null });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "payments") return missingPaymentChain;
+      if (table === "gig_invoices") return missingInvoiceChain;
+      if (table === "bounty_submissions") return bountySubmissionChain;
+      if (table === "bounties") return bountyChain;
+      return okChain;
+    });
+
+    const req = makeRequest(payload, WEBHOOK_SECRET);
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(mockFrom).toHaveBeenCalledWith("bounty_submissions");
+    expect(bountySubmissionChain.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payout_status: "paid",
+        metadata: expect.objectContaining({
+          tx_hash: "tx-1",
+          amount_crypto: 0.5,
+          payment_currency: "SOL",
+        }),
+      })
+    );
+  });
+
+  it("resets bounty submissions when payment expires so the creator can retry", async () => {
+    const payload = makeWebhookPayload("payment.expired", {
+      payment_id: "cp-pay-bounty-expired",
+      amount_usd: 25,
+      amount_crypto: 0.5,
+      currency: "SOL",
+      status: "expired",
+    });
+
+    const missingPaymentChain = chainResult({ data: null, error: null });
+    const missingInvoiceChain = chainResult({
+      data: null,
+      error: { code: "PGRST116", message: "No rows" },
+    });
+    const bountySubmissionChain = chainResult({
+      data: {
+        id: "sub-1",
+        bounty_id: "bounty-1",
+        submitter_id: "worker-1",
+        coinpay_invoice_id: "cp-pay-bounty-expired",
+        metadata: { payment_address: "SolAddress" },
+      },
+      error: null,
+    });
+    const bountyChain = chainResult({
+      data: { title: "Bounty fix", creator_id: "poster-1" },
+      error: null,
+    });
+    const okChain = chainResult({ data: null, error: null });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "payments") return missingPaymentChain;
+      if (table === "gig_invoices") return missingInvoiceChain;
+      if (table === "bounty_submissions") return bountySubmissionChain;
+      if (table === "bounties") return bountyChain;
+      return okChain;
+    });
+
+    const req = makeRequest(payload, WEBHOOK_SECRET);
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(bountySubmissionChain.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payout_status: "unpaid",
+        coinpay_invoice_id: null,
+        pay_url: null,
+        metadata: expect.objectContaining({
+          expired_coinpay_invoice_id: "cp-pay-bounty-expired",
+        }),
+      })
     );
   });
 
@@ -197,7 +308,10 @@ describe("POST /api/payments/coinpayportal/webhook", () => {
     // The mock is set up for createServiceClient, not createClient
     // If the code used createClient, the mock wouldn't work and tests would fail
     const payload = makeWebhookPayload("payment.confirmed");
-    const chain = chainResult({ data: { id: "local-1", user_id: "user-1", type: "tip", amount_usd: 1 }, error: null });
+    const chain = chainResult({
+      data: { id: "local-1", user_id: "user-1", type: "tip", amount_usd: 1 },
+      error: null,
+    });
     mockFrom.mockReturnValue(chain);
 
     const req = makeRequest(payload, WEBHOOK_SECRET);

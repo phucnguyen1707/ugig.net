@@ -1,35 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import {
-  verifyWebhookSignature,
-  type CoinPayWebhookPayload,
-} from "@/lib/coinpayportal";
+import { verifyWebhookSignature, type CoinPayWebhookPayload } from "@/lib/coinpayportal";
 import { LIFETIME_THRESHOLD_USD } from "@/lib/funding";
+import { getUserDid, onPaymentReceived, onPaymentSent } from "@/lib/reputation-hooks";
 
 // POST /api/payments/coinpayportal/webhook - Handle CoinPayPortal webhooks
 export async function POST(request: NextRequest) {
   return processCoinPayWebhook(request, process.env.COINPAY_FUNDING_WEBHOOK_SECRET);
 }
 
-export async function processCoinPayWebhook(request: NextRequest, webhookSecret: string | undefined) {
+export async function processCoinPayWebhook(
+  request: NextRequest,
+  webhookSecret: string | undefined
+) {
   try {
     const signature = request.headers.get("X-CoinPay-Signature");
     const rawBody = await request.text();
 
     if (!webhookSecret) {
       console.error("CoinPay webhook secret not configured");
-      return NextResponse.json(
-        { error: "Webhook not configured" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
     }
 
     if (!signature || !verifyWebhookSignature(rawBody, signature, webhookSecret)) {
       console.error("Invalid webhook signature");
-      return NextResponse.json(
-        { error: "Invalid signature" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     const payload: CoinPayWebhookPayload = JSON.parse(rawBody);
@@ -88,10 +83,7 @@ export async function processCoinPayWebhook(request: NextRequest, webhookSecret:
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error("Webhook processing error:", error);
-    return NextResponse.json(
-      { error: "Webhook processing failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }
 
@@ -104,7 +96,7 @@ async function handleFundingPaymentEvent(
   const amountCrypto =
     typeof payload.data.amount_crypto === "string"
       ? parseFloat(payload.data.amount_crypto)
-      : payload.data.amount_crypto ?? null;
+      : (payload.data.amount_crypto ?? null);
   const update: Record<string, unknown> = {
     status,
     updated_at: now,
@@ -146,6 +138,8 @@ async function handlePaymentConfirmed(
   if (paymentError) {
     const handledInvoice = await handleGigInvoicePaymentConfirmed(supabase, payload);
     if (handledInvoice) return;
+    const handledBounty = await handleBountyPaymentConfirmed(supabase, payload);
+    if (handledBounty) return;
     console.error("Failed to update payment:", paymentError);
     return;
   }
@@ -153,6 +147,8 @@ async function handlePaymentConfirmed(
   if (!payment) {
     const handledInvoice = await handleGigInvoicePaymentConfirmed(supabase, payload);
     if (handledInvoice) return;
+    const handledBounty = await handleBountyPaymentConfirmed(supabase, payload);
+    if (handledBounty) return;
     console.error("Payment not found:", paymentData.payment_id);
     return;
   }
@@ -174,9 +170,8 @@ async function handlePaymentConfirmed(
       const periodEnd = new Date(now);
       periodEnd.setMonth(periodEnd.getMonth() + 1);
 
-      await supabase
-        .from("subscriptions")
-        .upsert({
+      await supabase.from("subscriptions").upsert(
+        {
           user_id: payment.user_id,
           coinpay_payment_id: paymentData.payment_id,
           status: "active",
@@ -185,9 +180,11 @@ async function handlePaymentConfirmed(
           current_period_end: periodEnd.toISOString(),
           cancel_at_period_end: false,
           updated_at: now.toISOString(),
-        }, {
+        },
+        {
           onConflict: "user_id",
-        });
+        }
+      );
 
       // Notify user
       await supabase.from("notifications").insert({
@@ -262,6 +259,47 @@ async function grantLifetimeForInvestment(
   });
 }
 
+async function recordPaymentReputation(
+  supabase: ReturnType<typeof createServiceClient>,
+  {
+    payerId,
+    receiverId,
+    paymentId,
+    valueUsd,
+    metadata,
+  }: {
+    payerId?: string | null;
+    receiverId?: string | null;
+    paymentId: string;
+    valueUsd?: number;
+    metadata?: Record<string, unknown>;
+  }
+) {
+  try {
+    const [payerDid, receiverDid] = await Promise.all([
+      payerId ? getUserDid(supabase as any, payerId) : Promise.resolve(null),
+      receiverId ? getUserDid(supabase as any, receiverId) : Promise.resolve(null),
+    ]);
+
+    await Promise.all([
+      payerDid
+        ? onPaymentSent(payerDid, paymentId, valueUsd, {
+            ...metadata,
+            counterparty_user_id: receiverId,
+          })
+        : Promise.resolve(false),
+      receiverDid
+        ? onPaymentReceived(receiverDid, paymentId, valueUsd, {
+            ...metadata,
+            counterparty_user_id: payerId,
+          })
+        : Promise.resolve(false),
+    ]);
+  } catch (err) {
+    console.error("Payment reputation receipt failed (non-fatal):", err);
+  }
+}
+
 async function handlePaymentForwarded(
   supabase: ReturnType<typeof createServiceClient>,
   payload: CoinPayWebhookPayload
@@ -269,8 +307,7 @@ async function handlePaymentForwarded(
   const { data: paymentData } = payload;
 
   // Update payment with forwarding info + crypto amount
-  await (supabase
-    .from("payments") as any)
+  await (supabase.from("payments") as any)
     .update({
       status: "forwarded",
       amount_crypto: paymentData.amount_crypto || (paymentData as any).crypto_amount || null,
@@ -283,6 +320,7 @@ async function handlePaymentForwarded(
     .eq("coinpay_payment_id", paymentData.payment_id);
 
   await updateGigInvoicePaymentMetadata(supabase, payload, "sent");
+  await updateBountyPaymentMetadata(supabase, payload, "invoiced");
 }
 
 async function handlePaymentExpired(
@@ -305,6 +343,8 @@ async function handlePaymentExpired(
   if (!payment) {
     const handledInvoice = await updateGigInvoicePaymentMetadata(supabase, payload, "expired");
     if (handledInvoice) return;
+    const handledBounty = await updateBountyPaymentMetadata(supabase, payload, "unpaid");
+    if (handledBounty) return;
   }
 
   if (payment) {
@@ -319,6 +359,155 @@ async function handlePaymentExpired(
       },
     });
   }
+}
+
+async function handleBountyPaymentConfirmed(
+  supabase: ReturnType<typeof createServiceClient>,
+  payload: CoinPayWebhookPayload
+): Promise<boolean> {
+  const { data: paymentData } = payload;
+  const now = new Date().toISOString();
+  const { data: existingSubmission } = await (supabase as any)
+    .from("bounty_submissions")
+    .select("*")
+    .eq("coinpay_invoice_id", paymentData.payment_id)
+    .single();
+
+  if (!existingSubmission) return false;
+
+  const { data: submission } = await (supabase as any)
+    .from("bounty_submissions")
+    .update({
+      payout_status: "paid",
+      paid_at: now,
+      updated_at: now,
+      metadata: {
+        ...((existingSubmission.metadata || {}) as Record<string, unknown>),
+        tx_hash: paymentData.tx_hash,
+        merchant_tx_hash: paymentData.merchant_tx_hash,
+        paid_at: now,
+        payment_currency: paymentData.currency,
+        amount_crypto: paymentData.amount_crypto,
+      },
+    })
+    .eq("id", existingSubmission.id)
+    .select()
+    .single();
+
+  if (!submission) return false;
+
+  const { data: bounty } = await (supabase as any)
+    .from("bounties")
+    .select("id, title, creator_id, payout_usd")
+    .eq("id", submission.bounty_id)
+    .single();
+
+  await (supabase.from("notifications") as any).insert(
+    [
+      {
+        user_id: submission.submitter_id,
+        type: "payment_received",
+        title: "Bounty payout paid",
+        body: `Your bounty payout for "${bounty?.title || "your submission"}" was confirmed.`,
+        data: {
+          bounty_id: submission.bounty_id,
+          submission_id: submission.id,
+        },
+      },
+      {
+        user_id: bounty?.creator_id,
+        type: "payment_received",
+        title: "Bounty payout paid",
+        body: `Your $${bounty?.payout_usd || paymentData.amount_usd || ""} bounty payout for "${bounty?.title || "a submission"}" was confirmed.`,
+        data: {
+          bounty_id: submission.bounty_id,
+          submission_id: submission.id,
+        },
+      },
+    ].filter((n) => n.user_id)
+  );
+
+  await recordPaymentReputation(supabase, {
+    payerId: bounty?.creator_id,
+    receiverId: submission.submitter_id,
+    paymentId: paymentData.payment_id,
+    valueUsd: Number(bounty?.payout_usd || paymentData.amount_usd || 0),
+    metadata: {
+      type: "bounty_payout",
+      bounty_id: submission.bounty_id,
+      submission_id: submission.id,
+      payment_currency: paymentData.currency,
+    },
+  });
+
+  return true;
+}
+
+async function updateBountyPaymentMetadata(
+  supabase: ReturnType<typeof createServiceClient>,
+  payload: CoinPayWebhookPayload,
+  payoutStatus: "invoiced" | "unpaid"
+): Promise<boolean> {
+  const { data: paymentData } = payload;
+  const { data: existingSubmission } = await (supabase as any)
+    .from("bounty_submissions")
+    .select("*")
+    .eq("coinpay_invoice_id", paymentData.payment_id)
+    .single();
+
+  if (!existingSubmission) return false;
+
+  const metadata: Record<string, unknown> = {
+    ...((existingSubmission.metadata || {}) as Record<string, unknown>),
+    tx_hash: paymentData.tx_hash,
+    merchant_tx_hash: paymentData.merchant_tx_hash,
+    payment_currency: paymentData.currency,
+    amount_crypto: paymentData.amount_crypto,
+  };
+  const update: Record<string, unknown> = {
+    payout_status: payoutStatus,
+    metadata,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (payoutStatus === "unpaid") {
+    metadata.expired_at = new Date().toISOString();
+    metadata.expired_coinpay_invoice_id = existingSubmission.coinpay_invoice_id;
+    update.coinpay_invoice_id = null;
+    update.pay_url = null;
+  }
+
+  const { data: submission } = await (supabase as any)
+    .from("bounty_submissions")
+    .update(update)
+    .eq("id", existingSubmission.id)
+    .select()
+    .single();
+
+  if (!submission) return false;
+
+  if (payoutStatus === "unpaid") {
+    const { data: bounty } = await (supabase as any)
+      .from("bounties")
+      .select("title, creator_id")
+      .eq("id", submission.bounty_id)
+      .single();
+
+    if (bounty?.creator_id) {
+      await supabase.from("notifications").insert({
+        user_id: bounty.creator_id,
+        type: "payment_received",
+        title: "Bounty payment expired",
+        body: `The payment request for "${bounty.title || "your bounty"}" expired. You can create a new one.`,
+        data: {
+          bounty_id: submission.bounty_id,
+          submission_id: submission.id,
+        },
+      });
+    }
+  }
+
+  return true;
 }
 
 async function handleGigInvoicePaymentConfirmed(
@@ -392,6 +581,20 @@ async function handleGigInvoicePaymentConfirmed(
     },
   ]);
 
+  await recordPaymentReputation(supabase, {
+    payerId: invoice.poster_id,
+    receiverId: invoice.worker_id,
+    paymentId: paymentData.payment_id,
+    valueUsd: Number(invoice.amount_usd || paymentData.amount_usd || 0),
+    metadata: {
+      type: "gig_invoice",
+      gig_id: invoice.gig_id,
+      application_id: invoice.application_id,
+      invoice_id: invoice.id,
+      payment_currency: paymentData.currency,
+    },
+  });
+
   return true;
 }
 
@@ -453,7 +656,7 @@ async function handleEscrowFunded(
   supabase: ReturnType<typeof createServiceClient>,
   payload: CoinPayWebhookPayload
 ) {
-  const escrowId = payload.data.metadata?.coinpay_escrow_id as string || payload.data.payment_id;
+  const escrowId = (payload.data.metadata?.coinpay_escrow_id as string) || payload.data.payment_id;
   const now = new Date().toISOString();
 
   // Find matching gig_escrow
@@ -523,7 +726,7 @@ async function handleEscrowReleased(
   supabase: ReturnType<typeof createServiceClient>,
   payload: CoinPayWebhookPayload
 ) {
-  const escrowId = payload.data.metadata?.coinpay_escrow_id as string || payload.data.payment_id;
+  const escrowId = (payload.data.metadata?.coinpay_escrow_id as string) || payload.data.payment_id;
   const now = new Date().toISOString();
 
   const { data: escrow } = await (supabase as any)
@@ -562,7 +765,7 @@ async function handleEscrowRefunded(
   supabase: ReturnType<typeof createServiceClient>,
   payload: CoinPayWebhookPayload
 ) {
-  const escrowId = payload.data.metadata?.coinpay_escrow_id as string || payload.data.payment_id;
+  const escrowId = (payload.data.metadata?.coinpay_escrow_id as string) || payload.data.payment_id;
   const now = new Date().toISOString();
 
   const { data: escrow } = await (supabase as any)

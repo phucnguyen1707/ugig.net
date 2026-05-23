@@ -32,7 +32,7 @@ export async function POST(
 
     const { data: submission } = await (supabase as any)
       .from("bounty_submissions")
-      .select("id, submitter_id, status, payout_status, pay_url, coinpay_invoice_id")
+      .select("id, submitter_id, status, payout_status, pay_url, coinpay_invoice_id, metadata")
       .eq("id", sid)
       .eq("bounty_id", bountyId)
       .single();
@@ -40,32 +40,30 @@ export async function POST(
       return NextResponse.json({ error: "Submission not found" }, { status: 404 });
     }
     if (submission.status !== "approved") {
-      return NextResponse.json(
-        { error: "Only approved submissions can be paid" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Only approved submissions can be paid" }, { status: 400 });
     }
 
     // Already invoiced — return existing details
     if (submission.coinpay_invoice_id) {
+      const metadata = (submission.metadata || {}) as Record<string, unknown>;
       return NextResponse.json({
         data: {
           submission_id: sid,
           coinpay_invoice_id: submission.coinpay_invoice_id,
           pay_url: submission.pay_url,
+          payment_address: metadata.payment_address || null,
+          payment_currency: metadata.payment_currency || null,
+          amount_crypto: metadata.amount_crypto || null,
+          expires_at: metadata.expires_at || null,
         },
       });
     }
 
-    const appUrl =
-      process.env.APP_URL ||
-      process.env.NEXT_PUBLIC_APP_URL ||
-      "https://ugig.net";
+    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ugig.net";
     const businessId = process.env.COINPAY_MERCHANT_ID;
-    const paymentCurrency = await resolveSupportedPaymentCurrency(
-      bounty.payment_coin,
-      { business_id: businessId }
-    );
+    const paymentCurrency = await resolveSupportedPaymentCurrency(bounty.payment_coin, {
+      business_id: businessId,
+    });
 
     const paymentResult = await createPayment({
       amount_usd: Number(bounty.payout_usd),
@@ -85,12 +83,20 @@ export async function POST(
     });
 
     const cpPayment = (paymentResult.payment || paymentResult) as Record<string, unknown>;
-    const paymentId =
-      paymentResult.payment_id || (cpPayment.id as string | undefined);
+    const paymentId = paymentResult.payment_id || (cpPayment.id as string | undefined);
     const paymentAddress =
-      (cpPayment.payment_address as string | undefined) ||
-      paymentResult.address ||
+      (cpPayment.payment_address as string | undefined) || paymentResult.address || null;
+    const checkoutUrl =
+      paymentResult.checkout_url || (cpPayment.checkout_url as string | undefined) || null;
+    const amountCrypto =
+      paymentResult.amount_crypto ||
+      (cpPayment.amount_crypto as number | undefined) ||
+      (cpPayment.crypto_amount as number | undefined) ||
       null;
+    const expiresAt =
+      paymentResult.expires_at || (cpPayment.expires_at as string | undefined) || null;
+    const responseCurrency =
+      paymentResult.currency || (cpPayment.currency as string | undefined) || paymentCurrency;
 
     if (!paymentId || !paymentAddress) {
       return NextResponse.json(
@@ -104,7 +110,14 @@ export async function POST(
       .update({
         payout_status: "invoiced",
         coinpay_invoice_id: paymentId,
-        pay_url: paymentResult.checkout_url || (cpPayment.checkout_url as string | undefined) || null,
+        pay_url: checkoutUrl,
+        metadata: {
+          payment_address: paymentAddress,
+          amount_crypto: amountCrypto,
+          payment_currency: responseCurrency,
+          checkout_url: checkoutUrl,
+          expires_at: expiresAt,
+        },
       })
       .eq("id", sid);
 
@@ -117,20 +130,10 @@ export async function POST(
         submission_id: sid,
         coinpay_invoice_id: paymentId,
         payment_address: paymentAddress,
-        payment_currency: paymentResult.currency || paymentCurrency,
-        amount_crypto:
-          paymentResult.amount_crypto ||
-          (cpPayment.amount_crypto as number | undefined) ||
-          (cpPayment.crypto_amount as number | undefined) ||
-          null,
-        expires_at:
-          paymentResult.expires_at ||
-          (cpPayment.expires_at as string | undefined) ||
-          null,
-        pay_url:
-          paymentResult.checkout_url ||
-          (cpPayment.checkout_url as string | undefined) ||
-          null,
+        payment_currency: responseCurrency,
+        amount_crypto: amountCrypto,
+        expires_at: expiresAt,
+        pay_url: checkoutUrl,
       },
     });
   } catch (err) {

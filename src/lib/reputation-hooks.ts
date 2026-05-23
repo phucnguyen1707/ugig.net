@@ -1,12 +1,8 @@
-import { SupabaseClient } from '@supabase/supabase-js';
-import { submitReputationReceipt, UGIG_PLATFORM_DID } from './reputation';
+import { SupabaseClient } from "@supabase/supabase-js";
+import { submitReputationReceipt, UGIG_PLATFORM_DID } from "./reputation";
 
 export async function getUserDid(supabase: SupabaseClient, userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('profiles')
-    .select('did')
-    .eq('id', userId)
-    .single();
+  const { data } = await supabase.from("profiles").select("did").eq("id", userId).single();
   return data?.did || null;
 }
 
@@ -14,7 +10,7 @@ export function onProfileCompleted(userDid: string) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'profile_completed',
+    action: "profile_completed",
   }).catch(() => {});
 }
 
@@ -22,7 +18,7 @@ export function onResumeUploaded(userDid: string) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'resume_uploaded',
+    action: "resume_uploaded",
   }).catch(() => {});
 }
 
@@ -30,7 +26,7 @@ export function onGigPosted(userDid: string, gigId: string) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'gig_posted',
+    action: "gig_posted",
     metadata: { gig_id: gigId },
   }).catch(() => {});
 }
@@ -39,7 +35,7 @@ export function onApplicationSubmitted(userDid: string, gigId: string) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'application_submitted',
+    action: "application_submitted",
     metadata: { gig_id: gigId },
   }).catch(() => {});
 }
@@ -48,8 +44,38 @@ export function onGigCompleted(userDid: string, gigId: string, valueUsd?: number
   return submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'gig_completed',
+    action: "gig_completed",
     metadata: { gig_id: gigId },
+    value_usd: valueUsd,
+  }).catch(() => {});
+}
+
+export function onPaymentSent(
+  userDid: string,
+  paymentId: string,
+  valueUsd?: number,
+  metadata?: Record<string, unknown>
+) {
+  return submitReputationReceipt({
+    agent_did: userDid,
+    merchant_did: UGIG_PLATFORM_DID,
+    action: "payment_sent",
+    metadata: { payment_id: paymentId, ...(metadata || {}) },
+    value_usd: valueUsd,
+  }).catch(() => {});
+}
+
+export function onPaymentReceived(
+  userDid: string,
+  paymentId: string,
+  valueUsd?: number,
+  metadata?: Record<string, unknown>
+) {
+  return submitReputationReceipt({
+    agent_did: userDid,
+    merchant_did: UGIG_PLATFORM_DID,
+    action: "payment_received",
+    metadata: { payment_id: paymentId, ...(metadata || {}) },
     value_usd: valueUsd,
   }).catch(() => {});
 }
@@ -58,7 +84,7 @@ export function onHired(userDid: string, gigId: string, valueUsd?: number) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'hired',
+    action: "hired",
     metadata: { gig_id: gigId },
     value_usd: valueUsd,
   }).catch(() => {});
@@ -68,7 +94,7 @@ export function onPostCreated(userDid: string, postId: string) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'post_created',
+    action: "post_created",
     metadata: { post_id: postId },
   }).catch(() => {});
 }
@@ -77,7 +103,7 @@ export function onCommentCreated(userDid: string, commentId: string) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'comment_created',
+    action: "comment_created",
     metadata: { comment_id: commentId },
   }).catch(() => {});
 }
@@ -86,7 +112,7 @@ export function onEndorsementGiven(userDid: string, endorsedDid: string) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'endorsement_given',
+    action: "endorsement_given",
     metadata: { endorsed_did: endorsedDid },
   }).catch(() => {});
 }
@@ -95,7 +121,7 @@ export function onReviewCreated(userDid: string, reviewId: string, reviewedDid?:
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'review_created',
+    action: "review_created",
     metadata: { review_id: reviewId, reviewed_did: reviewedDid },
   }).catch(() => {});
 }
@@ -104,7 +130,7 @@ export function onFollowed(userDid: string, followedDid: string) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'followed_user',
+    action: "followed_user",
     metadata: { followed_did: followedDid },
   }).catch(() => {});
 }
@@ -113,7 +139,7 @@ export function onPortfolioAdded(userDid: string, portfolioId: string) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'portfolio_added',
+    action: "portfolio_added",
     metadata: { portfolio_id: portfolioId },
   }).catch(() => {});
 }
@@ -122,25 +148,33 @@ export function onVerificationRequested(userDid: string, verificationType: strin
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'verification_requested',
+    action: "verification_requested",
     metadata: { verification_type: verificationType },
   }).catch(() => {});
 }
 
-export function onUpvoted(userDid: string, postId: string, targetType: 'post' | 'comment' = 'post') {
+export function onUpvoted(
+  userDid: string,
+  postId: string,
+  targetType: "post" | "comment" = "post"
+) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'upvoted',
+    action: "upvoted",
     metadata: { post_id: postId, target_type: targetType },
   }).catch(() => {});
 }
 
-export function onContentDownvoted(authorDid: string, contentId: string, targetType: 'post' | 'comment' = 'post') {
+export function onContentDownvoted(
+  authorDid: string,
+  contentId: string,
+  targetType: "post" | "comment" = "post"
+) {
   submitReputationReceipt({
     agent_did: authorDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'content_downvoted',
+    action: "content_downvoted",
     metadata: { content_id: contentId, target_type: targetType },
   }).catch(() => {});
 }
@@ -149,7 +183,7 @@ export function onWalletDeposit(userDid: string, amountSats: number) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'wallet_deposit',
+    action: "wallet_deposit",
     metadata: { amount_sats: amountSats },
   }).catch(() => {});
 }
@@ -158,7 +192,7 @@ export function onWalletWithdraw(userDid: string, amountSats: number) {
   submitReputationReceipt({
     agent_did: userDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'wallet_withdraw',
+    action: "wallet_withdraw",
     metadata: { amount_sats: amountSats },
   }).catch(() => {});
 }
@@ -167,7 +201,7 @@ export function onZapSent(senderDid: string, recipientDid: string, amountSats: n
   submitReputationReceipt({
     agent_did: senderDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'zap_sent',
+    action: "zap_sent",
     metadata: { recipient_did: recipientDid, amount_sats: amountSats },
   }).catch(() => {});
 }
@@ -176,7 +210,7 @@ export function onZapReceived(recipientDid: string, senderDid: string, amountSat
   submitReputationReceipt({
     agent_did: recipientDid,
     merchant_did: UGIG_PLATFORM_DID,
-    action: 'zap_received',
+    action: "zap_received",
     metadata: { sender_did: senderDid, amount_sats: amountSats },
   }).catch(() => {});
 }

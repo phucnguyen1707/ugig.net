@@ -4,14 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  ExternalLink,
-  DollarSign,
-} from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Clock, DollarSign } from "lucide-react";
+import { CryptoPaymentBox } from "@/components/payments/CryptoPaymentBox";
 
 interface Question {
   id: string;
@@ -29,7 +23,9 @@ interface Submission {
   payout_status: "unpaid" | "invoiced" | "paid";
   review_notes: string | null;
   reviewed_at: string | null;
+  coinpay_invoice_id: string | null;
   pay_url: string | null;
+  metadata?: PaymentDetails | null;
   created_at: string;
   submitter: {
     id: string;
@@ -39,6 +35,14 @@ interface Submission {
   } | null;
 }
 
+interface PaymentDetails {
+  payment_address?: string | null;
+  amount_crypto?: string | number | null;
+  payment_currency?: string | null;
+  checkout_url?: string | null;
+  expires_at?: string | null;
+}
+
 interface ReviewPanelProps {
   bountyId: string;
   payoutUsd: number;
@@ -46,31 +50,23 @@ interface ReviewPanelProps {
   submissions: Submission[];
 }
 
-export function ReviewPanel({
-  bountyId,
-  payoutUsd,
-  questions,
-  submissions,
-}: ReviewPanelProps) {
+export function ReviewPanel({ bountyId, payoutUsd, questions, submissions }: ReviewPanelProps) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paymentDetails, setPaymentDetails] = useState<Record<string, PaymentDetails>>({});
 
-  const questionLabel = (qid: string) =>
-    questions.find((q) => q.id === qid)?.label || qid;
+  const questionLabel = (qid: string) => questions.find((q) => q.id === qid)?.label || qid;
 
   const review = async (sid: string, status: "approved" | "rejected") => {
     setError(null);
     setBusyId(sid);
     try {
-      const res = await fetch(
-        `/api/bounties/${bountyId}/submissions/${sid}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status }),
-        }
-      );
+      const res = await fetch(`/api/bounties/${bountyId}/submissions/${sid}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
       const json = await res.json();
       if (!res.ok) {
         setError(json.error || "Failed");
@@ -86,17 +82,25 @@ export function ReviewPanel({
     setError(null);
     setBusyId(sid);
     try {
-      const res = await fetch(
-        `/api/bounties/${bountyId}/submissions/${sid}/pay`,
-        { method: "POST" }
-      );
+      const res = await fetch(`/api/bounties/${bountyId}/submissions/${sid}/pay`, {
+        method: "POST",
+      });
       const json = await res.json();
       if (!res.ok) {
         setError(json.error || "Failed to create payment link");
         return;
       }
-      if (json.data?.pay_url) {
-        window.open(json.data.pay_url, "_blank", "noopener,noreferrer");
+      if (json.data) {
+        setPaymentDetails((prev) => ({
+          ...prev,
+          [sid]: {
+            payment_address: json.data.payment_address,
+            amount_crypto: json.data.amount_crypto,
+            payment_currency: json.data.payment_currency,
+            checkout_url: json.data.pay_url,
+            expires_at: json.data.expires_at,
+          },
+        }));
       }
       router.refresh();
     } finally {
@@ -117,11 +121,11 @@ export function ReviewPanel({
 
   const renderCard = (s: Submission) => {
     const name = s.submitter?.full_name || s.submitter?.username || "Unknown";
+    const details = paymentDetails[s.id] || s.metadata || null;
+    const paymentAddress = details?.payment_address || null;
+    const checkoutUrl = details?.checkout_url || s.pay_url || null;
     return (
-      <div
-        key={s.id}
-        className="p-4 bg-card border border-border rounded-lg space-y-3"
-      >
+      <div key={s.id} className="p-4 bg-card border border-border rounded-lg space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="font-medium">{name}</p>
@@ -190,7 +194,7 @@ export function ReviewPanel({
             </>
           )}
 
-          {s.status === "approved" && s.payout_status === "unpaid" && (
+          {s.status === "approved" && s.payout_status === "unpaid" && !paymentAddress && (
             <Button
               size="sm"
               disabled={busyId === s.id}
@@ -207,17 +211,18 @@ export function ReviewPanel({
           )}
 
           {s.status === "approved" &&
-            s.payout_status === "invoiced" &&
-            s.pay_url && (
-              <a
-                href={s.pay_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-              >
-                <ExternalLink className="h-3 w-3" />
-                Open payment link
-              </a>
+            (s.payout_status === "invoiced" || paymentAddress) &&
+            paymentAddress && (
+              <div className="w-full pt-2">
+                <CryptoPaymentBox
+                  title="Bounty payout"
+                  paymentAddress={paymentAddress}
+                  amountCrypto={details?.amount_crypto}
+                  paymentCurrency={details?.payment_currency}
+                  expiresAt={details?.expires_at}
+                  checkoutUrl={checkoutUrl}
+                />
+              </div>
             )}
 
           {s.payout_status === "paid" && (
