@@ -155,4 +155,40 @@ describe("POST /api/bounties/[id]/submissions/[sid]/pay", () => {
     expect(body.data.payment_address).toBe("So11111111111111111111111111111111111111112");
     expect(createPayment).not.toHaveBeenCalled();
   });
+
+  it("returns the database error when loading the submission fails", async () => {
+    const bountyChain = chain({
+      data: {
+        id: BOUNTY_ID,
+        creator_id: CREATOR_ID,
+        title: "Test bounty",
+        payout_usd: 25,
+        payment_coin: "SOL",
+      },
+    });
+    const submissionChain = chain({
+      data: null,
+      error: { message: "column bounty_submissions.metadata does not exist" },
+    });
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === "bounties") return bountyChain;
+        if (table === "bounty_submissions") return submissionChain;
+        return chain({ data: null });
+      }),
+    };
+
+    (getAuthContext as any).mockResolvedValue({
+      user: { id: CREATOR_ID },
+      supabase,
+    });
+    vi.spyOn(console, "error").mockImplementationOnce(() => {});
+
+    const res = await POST(req(), params);
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("column bounty_submissions.metadata does not exist");
+    expect(createPayment).not.toHaveBeenCalled();
+  });
 });

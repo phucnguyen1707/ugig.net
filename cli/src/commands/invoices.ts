@@ -37,7 +37,7 @@ export function registerInvoicesCommands(program: Command): void {
             { header: "Created", key: "created_at", transform: relativeDate },
           ],
           result.data || [],
-          opts as OutputOptions,
+          opts as OutputOptions
         );
       } catch (err) {
         spinner?.fail("Failed");
@@ -64,7 +64,7 @@ export function registerInvoicesCommands(program: Command): void {
           currency?: string;
           notes?: string;
           dueDate?: string;
-        },
+        }
       ) => {
         const opts = program.opts() as GlobalOpts;
         const spinner = opts.json ? null : ora("Creating invoice...").start();
@@ -82,7 +82,11 @@ export function registerInvoicesCommands(program: Command): void {
             data: {
               invoice_id: string;
               coinpay_invoice_id: string;
-              pay_url: string;
+              pay_url: string | null;
+              payment_address: string;
+              amount_crypto: string | number | null;
+              payment_currency: string;
+              expires_at: string | null;
             };
           }>(`/api/gigs/${gigId}/invoice`, body);
           spinner?.stop();
@@ -91,15 +95,18 @@ export function registerInvoicesCommands(program: Command): void {
             [
               { label: "Invoice ID", key: "invoice_id" },
               { label: "CoinPay Invoice ID", key: "coinpay_invoice_id" },
-              { label: "Pay URL", key: "pay_url" },
+              { label: "Payment Address", key: "payment_address" },
+              { label: "Amount (crypto)", key: "amount_crypto" },
+              { label: "Payment Currency", key: "payment_currency" },
+              { label: "Expires", key: "expires_at" },
             ],
             result.data as unknown as Record<string, unknown>,
-            opts as OutputOptions,
+            opts as OutputOptions
           );
         } catch (err) {
           spinner?.fail("Failed");
           handleError(err, opts as OutputOptions);
         }
-      },
+      }
     );
 }

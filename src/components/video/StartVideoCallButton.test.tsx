@@ -79,11 +79,7 @@ describe("StartVideoCallButton", () => {
     });
 
     render(
-      <StartVideoCallButton
-        participantId="user-456"
-        gigId="gig-789"
-        applicationId="app-101"
-      />
+      <StartVideoCallButton participantId="user-456" gigId="gig-789" applicationId="app-101" />
     );
 
     const button = screen.getByRole("button");
@@ -125,9 +121,7 @@ describe("StartVideoCallButton", () => {
   });
 
   it("shows loading state while creating call", async () => {
-    vi.mocked(videoCalls.create).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({ data: { data: { id: "call-123" } }, error: null }), 100))
-    );
+    vi.mocked(videoCalls.create).mockImplementation(() => new Promise(() => {}));
 
     render(<StartVideoCallButton participantId="user-456" />);
 
@@ -139,9 +133,7 @@ describe("StartVideoCallButton", () => {
   });
 
   it("disables button while loading", async () => {
-    vi.mocked(videoCalls.create).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({ data: { data: { id: "call-123" } }, error: null }), 100))
-    );
+    vi.mocked(videoCalls.create).mockImplementation(() => new Promise(() => {}));
 
     render(<StartVideoCallButton participantId="user-456" />);
 
@@ -193,12 +185,7 @@ describe("StartVideoCallButton", () => {
   });
 
   it("applies custom className", () => {
-    render(
-      <StartVideoCallButton
-        participantId="user-456"
-        className="custom-class"
-      />
-    );
+    render(<StartVideoCallButton participantId="user-456" className="custom-class" />);
 
     const button = screen.getByRole("button");
     expect(button).toHaveClass("custom-class");
@@ -206,34 +193,21 @@ describe("StartVideoCallButton", () => {
 
   it("respects variant prop", () => {
     const { rerender } = render(
-      <StartVideoCallButton
-        participantId="user-456"
-        variant="default"
-      />
+      <StartVideoCallButton participantId="user-456" variant="default" />
     );
 
     // The default variant should have different styles
     let button = screen.getByRole("button");
     expect(button).toBeInTheDocument();
 
-    rerender(
-      <StartVideoCallButton
-        participantId="user-456"
-        variant="outline"
-      />
-    );
+    rerender(<StartVideoCallButton participantId="user-456" variant="outline" />);
 
     button = screen.getByRole("button");
     expect(button).toBeInTheDocument();
   });
 
   it("respects size prop", () => {
-    render(
-      <StartVideoCallButton
-        participantId="user-456"
-        size="lg"
-      />
-    );
+    render(<StartVideoCallButton participantId="user-456" size="lg" />);
 
     const button = screen.getByRole("button");
     expect(button).toBeInTheDocument();

@@ -8,7 +8,6 @@ const createPaymentSchema = z.object({
   plan: z.enum(["monthly", "annual", "lifetime"]).optional(),
   currency: z.enum(["usdc_pol", "usdc_sol", "pol", "sol", "btc", "eth", "usdc_eth", "usdt"]),
   amount_usd: z.number().min(1).optional(),
-  gig_id: z.string().uuid().optional(),
 });
 
 // POST /api/payments/coinpayportal/create - Create a new payment
@@ -33,7 +32,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { type, plan, currency, amount_usd, gig_id } = validationResult.data;
+    const { type, plan, currency, amount_usd } = validationResult.data;
+
+    if (type === "gig_payment") {
+      return NextResponse.json(
+        { error: "Gig payments must be paid through invoices" },
+        { status: 400 }
+      );
+    }
 
     // Determine amount based on type
     let amount: number;
@@ -52,32 +58,16 @@ export async function POST(request: NextRequest) {
           description = "ugig.net Pro Subscription (Monthly)";
         }
         break;
-      case "gig_payment":
-        if (!amount_usd || !gig_id) {
-          return NextResponse.json(
-            { error: "amount_usd and gig_id required for gig payments" },
-            { status: 400 }
-          );
-        }
-        amount = amount_usd;
-        description = `Gig payment for ${gig_id}`;
-        break;
       case "tip":
       case "funding":
         if (!amount_usd) {
-          return NextResponse.json(
-            { error: "amount_usd required for funding" },
-            { status: 400 }
-          );
+          return NextResponse.json({ error: `amount_usd required for ${type}` }, { status: 400 });
         }
         amount = amount_usd;
         description = type === "funding" ? "ugig.net funding" : "Tip";
         break;
       default:
-        return NextResponse.json(
-          { error: "Invalid payment type" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Invalid payment type" }, { status: 400 });
     }
 
     const businessId = process.env.COINPAY_MERCHANT_ID;
@@ -93,7 +83,6 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         type,
         plan,
-        gig_id,
       },
     });
 
@@ -108,7 +97,6 @@ export async function POST(request: NextRequest) {
         status: "pending",
         type: type as any,
         metadata: {
-          gig_id,
           checkout_url: paymentResult.checkout_url,
           expires_at: paymentResult.expires_at,
         },
@@ -118,17 +106,17 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("Failed to create payment record:", error);
-      return NextResponse.json(
-        { error: "Failed to create payment" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to create payment" }, { status: 500 });
     }
 
     // Extract fields from CoinPayPortal response (may be at root or nested in .payment)
     const cpPayment = paymentResult.payment || paymentResult;
     const paymentAddress = (cpPayment as any).payment_address || paymentResult.address || null;
     const checkoutUrl = paymentResult.checkout_url || (cpPayment as any).checkout_url || null;
-    const amountCrypto = paymentResult.amount_crypto || (cpPayment as any).amount_crypto || (cpPayment as any).crypto_amount;
+    const amountCrypto =
+      paymentResult.amount_crypto ||
+      (cpPayment as any).amount_crypto ||
+      (cpPayment as any).crypto_amount;
     const expiresAt = paymentResult.expires_at || (cpPayment as any).expires_at;
 
     return NextResponse.json({
@@ -141,9 +129,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Payment creation error:", error);
-    return NextResponse.json(
-      { error: "An unexpected error occurred" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
   }
 }

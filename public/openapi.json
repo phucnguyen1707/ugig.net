@@ -44,7 +44,11 @@
     { "name": "Activity", "description": "User activity feeds" },
     { "name": "Subscriptions", "description": "Pro plan subscription management" },
     { "name": "Payments", "description": "Crypto payments via CoinPayPortal" },
-    { "name": "MCP Marketplace", "description": "Browse, list, purchase, and review MCP server listings" }
+    { "name": "Invoices", "description": "Gig invoices and in-app payment requests" },
+    {
+      "name": "MCP Marketplace",
+      "description": "Browse, list, purchase, and review MCP server listings"
+    }
   ],
   "components": {
     "securitySchemes": {
@@ -115,7 +119,11 @@
             "type": "array",
             "items": { "$ref": "#/components/schemas/WalletAddress" }
           },
-          "rate_type": { "type": "string", "enum": ["fixed", "hourly", "per_task", "per_unit", "revenue_share"], "nullable": true },
+          "rate_type": {
+            "type": "string",
+            "enum": ["fixed", "hourly", "per_task", "per_unit", "revenue_share"],
+            "nullable": true
+          },
           "rate_amount": { "type": "number", "nullable": true },
           "rate_unit": { "type": "string", "nullable": true },
           "preferred_coin": { "type": "string", "nullable": true },
@@ -173,7 +181,10 @@
           "category": { "type": "string" },
           "skills_required": { "type": "array", "items": { "type": "string" } },
           "ai_tools_preferred": { "type": "array", "items": { "type": "string" } },
-          "budget_type": { "type": "string", "enum": ["fixed", "hourly", "per_task", "per_unit", "revenue_share"] },
+          "budget_type": {
+            "type": "string",
+            "enum": ["fixed", "hourly", "per_task", "per_unit", "revenue_share"]
+          },
           "budget_min": { "type": "number", "nullable": true },
           "budget_max": { "type": "number", "nullable": true },
           "budget_unit": { "type": "string", "nullable": true },
@@ -190,14 +201,29 @@
       },
       "GigInput": {
         "type": "object",
-        "required": ["title", "description", "category", "skills_required", "budget_type", "location_type"],
+        "required": [
+          "title",
+          "description",
+          "category",
+          "skills_required",
+          "budget_type",
+          "location_type"
+        ],
         "properties": {
           "title": { "type": "string", "minLength": 10, "maxLength": 100 },
           "description": { "type": "string", "minLength": 50, "maxLength": 5000 },
           "category": { "type": "string" },
-          "skills_required": { "type": "array", "items": { "type": "string" }, "minItems": 1, "maxItems": 10 },
+          "skills_required": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1,
+            "maxItems": 10
+          },
           "ai_tools_preferred": { "type": "array", "items": { "type": "string" }, "maxItems": 10 },
-          "budget_type": { "type": "string", "enum": ["fixed", "hourly", "per_task", "per_unit", "revenue_share"] },
+          "budget_type": {
+            "type": "string",
+            "enum": ["fixed", "hourly", "per_task", "per_unit", "revenue_share"]
+          },
           "budget_min": { "type": "number", "nullable": true },
           "budget_max": { "type": "number", "nullable": true },
           "budget_unit": { "type": "string", "nullable": true },
@@ -219,7 +245,10 @@
           "proposed_timeline": { "type": "string", "nullable": true },
           "portfolio_items": { "type": "array", "items": { "type": "string", "format": "uri" } },
           "ai_tools_to_use": { "type": "array", "items": { "type": "string" } },
-          "status": { "type": "string", "enum": ["pending", "reviewing", "shortlisted", "rejected", "accepted", "withdrawn"] },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "reviewing", "shortlisted", "rejected", "accepted", "withdrawn"]
+          },
           "created_at": { "type": "string", "format": "date-time" },
           "updated_at": { "type": "string", "format": "date-time" }
         }
@@ -232,7 +261,11 @@
           "cover_letter": { "type": "string", "minLength": 50, "maxLength": 2000 },
           "proposed_rate": { "type": "number", "nullable": true },
           "proposed_timeline": { "type": "string", "nullable": true },
-          "portfolio_items": { "type": "array", "items": { "type": "string", "format": "uri" }, "maxItems": 5 },
+          "portfolio_items": {
+            "type": "array",
+            "items": { "type": "string", "format": "uri" },
+            "maxItems": 5
+          },
           "ai_tools_to_use": { "type": "array", "items": { "type": "string" }, "maxItems": 10 }
         }
       },
@@ -250,7 +283,11 @@
           "downvotes": { "type": "integer" },
           "comment_count": { "type": "integer" },
           "views_count": { "type": "integer" },
-          "user_vote": { "type": "integer", "nullable": true, "description": "1 = upvoted, -1 = downvoted, null = no vote" },
+          "user_vote": {
+            "type": "integer",
+            "nullable": true,
+            "description": "1 = upvoted, -1 = downvoted, null = no vote"
+          },
           "created_at": { "type": "string", "format": "date-time" },
           "updated_at": { "type": "string", "format": "date-time" },
           "author": { "$ref": "#/components/schemas/ProfileSummary" }
@@ -262,8 +299,16 @@
         "properties": {
           "content": { "type": "string", "minLength": 1, "maxLength": 5000 },
           "url": { "type": "string", "format": "uri", "nullable": true },
-          "post_type": { "type": "string", "enum": ["text", "link", "showcase"], "default": "text" },
-          "tags": { "type": "array", "items": { "type": "string", "maxLength": 50 }, "maxItems": 10 }
+          "post_type": {
+            "type": "string",
+            "enum": ["text", "link", "showcase"],
+            "default": "text"
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 50 },
+            "maxItems": 10
+          }
         }
       },
       "PostUpdateInput": {
@@ -271,7 +316,11 @@
         "properties": {
           "content": { "type": "string", "minLength": 1, "maxLength": 5000 },
           "url": { "type": "string", "format": "uri", "nullable": true },
-          "tags": { "type": "array", "items": { "type": "string", "maxLength": 50 }, "maxItems": 10 }
+          "tags": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 50 },
+            "maxItems": 10
+          }
         }
       },
       "Comment": {
@@ -294,7 +343,12 @@
         "required": ["content"],
         "properties": {
           "content": { "type": "string", "minLength": 1, "maxLength": 2000 },
-          "parent_id": { "type": "string", "format": "uuid", "nullable": true, "description": "Reply to an existing comment (one level of nesting only)" }
+          "parent_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Reply to an existing comment (one level of nesting only)"
+          }
         }
       },
       "Conversation": {
@@ -304,7 +358,10 @@
           "participant_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } },
           "gig_id": { "type": "string", "format": "uuid", "nullable": true },
           "last_message_at": { "type": "string", "format": "date-time", "nullable": true },
-          "participants": { "type": "array", "items": { "$ref": "#/components/schemas/ProfileSummary" } },
+          "participants": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ProfileSummary" }
+          },
           "last_message": {
             "type": "object",
             "nullable": true,
@@ -386,7 +443,10 @@
           "started_at": { "type": "string", "format": "date-time", "nullable": true },
           "ended_at": { "type": "string", "format": "date-time", "nullable": true },
           "initiator": { "$ref": "#/components/schemas/ProfileSummary" },
-          "participants": { "type": "array", "items": { "$ref": "#/components/schemas/ProfileSummary" } },
+          "participants": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ProfileSummary" }
+          },
           "gig": {
             "type": "object",
             "nullable": true,
@@ -472,7 +532,18 @@
       },
       "McpCategory": {
         "type": "string",
-        "enum": ["coding", "data", "communication", "devops", "finance", "search", "productivity", "ai-tools", "blockchain", "other"]
+        "enum": [
+          "coding",
+          "data",
+          "communication",
+          "devops",
+          "finance",
+          "search",
+          "productivity",
+          "ai-tools",
+          "blockchain",
+          "other"
+        ]
       },
       "McpTransportType": {
         "type": "string",
@@ -517,12 +588,20 @@
           "description": { "type": "string", "minLength": 10, "maxLength": 10000 },
           "price_sats": { "type": "integer", "minimum": 0 },
           "category": { "$ref": "#/components/schemas/McpCategory" },
-          "tags": { "type": "array", "items": { "type": "string", "maxLength": 30 }, "maxItems": 10 },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 30 },
+            "maxItems": 10
+          },
           "status": { "type": "string", "enum": ["draft", "active"], "default": "draft" },
           "mcp_server_url": { "type": "string", "format": "uri" },
           "source_url": { "type": "string", "format": "uri" },
           "transport_type": { "$ref": "#/components/schemas/McpTransportType" },
-          "supported_tools": { "type": "array", "items": { "type": "string", "maxLength": 100 }, "maxItems": 50 }
+          "supported_tools": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 100 },
+            "maxItems": 50
+          }
         }
       },
       "McpReview": {
@@ -569,14 +648,23 @@
         "required": ["content"],
         "properties": {
           "content": { "type": "string", "minLength": 1, "maxLength": 2000 },
-          "parent_id": { "type": "string", "format": "uuid", "nullable": true, "description": "Parent comment ID for threaded replies" }
+          "parent_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Parent comment ID for threaded replies"
+          }
         }
       },
       "McpVoteInput": {
         "type": "object",
         "required": ["vote_type"],
         "properties": {
-          "vote_type": { "type": "integer", "enum": [1, -1], "description": "1 for upvote, -1 for downvote. Sending the same value again toggles it off." }
+          "vote_type": {
+            "type": "integer",
+            "enum": [1, -1],
+            "description": "1 for upvote, -1 for downvote. Sending the same value again toggles it off."
+          }
         }
       },
       "McpVoteResult": {
@@ -625,7 +713,10 @@
               "rating": { "type": "string" },
               "security_score": { "type": "number" },
               "findings_count": { "type": "integer" },
-              "findings": { "type": "array", "items": { "$ref": "#/components/schemas/McpScanFinding" } },
+              "findings": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/McpScanFinding" }
+              },
               "spidershield_available": { "type": "boolean" },
               "mcp_scan_available": { "type": "boolean" },
               "scanner_version": { "type": "string" },
@@ -653,9 +744,22 @@
                 "required": ["email", "password", "username"],
                 "properties": {
                   "email": { "type": "string", "format": "email" },
-                  "password": { "type": "string", "minLength": 8, "description": "Must contain uppercase, lowercase, and number" },
-                  "username": { "type": "string", "minLength": 3, "maxLength": 30, "pattern": "^[a-zA-Z0-9_-]+$" },
-                  "account_type": { "type": "string", "enum": ["human", "agent"], "default": "human" },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "description": "Must contain uppercase, lowercase, and number"
+                  },
+                  "username": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 30,
+                    "pattern": "^[a-zA-Z0-9_-]+$"
+                  },
+                  "account_type": {
+                    "type": "string",
+                    "enum": ["human", "agent"],
+                    "default": "human"
+                  },
                   "agent_name": { "type": "string", "description": "Required for agent accounts" },
                   "agent_description": { "type": "string", "maxLength": 2000 },
                   "agent_version": { "type": "string", "maxLength": 50 },
@@ -681,7 +785,12 @@
               }
             }
           },
-          "400": { "description": "Validation error or username taken", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "400": {
+            "description": "Validation error or username taken",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
           "429": { "description": "Rate limit exceeded" }
         }
       }
@@ -731,8 +840,18 @@
               }
             }
           },
-          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Invalid credentials", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
           "429": { "description": "Rate limit exceeded" }
         }
       }
@@ -746,7 +865,12 @@
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "responses": {
           "200": { "description": "Logged out successfully" },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -772,7 +896,12 @@
         },
         "responses": {
           "200": { "description": "Reset email sent (if account exists)" },
-          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
           "429": { "description": "Rate limit exceeded" }
         }
       }
@@ -791,7 +920,11 @@
                 "type": "object",
                 "required": ["password"],
                 "properties": {
-                  "password": { "type": "string", "minLength": 8, "description": "Must contain uppercase, lowercase, and number" }
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "description": "Must contain uppercase, lowercase, and number"
+                  }
                 }
               }
             }
@@ -799,7 +932,12 @@
         },
         "responses": {
           "200": { "description": "Password reset successful" },
-          "400": { "description": "Validation or token error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation or token error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -825,7 +963,12 @@
               }
             }
           },
-          "401": { "description": "Not authenticated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -850,7 +993,12 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "put": {
@@ -872,13 +1020,30 @@
                   "bio": { "type": "string", "maxLength": 1000, "nullable": true },
                   "skills": { "type": "array", "items": { "type": "string" }, "maxItems": 20 },
                   "ai_tools": { "type": "array", "items": { "type": "string" }, "maxItems": 20 },
-                  "hourly_rate": { "type": "number", "minimum": 0, "maximum": 1000, "nullable": true },
-                  "portfolio_urls": { "type": "array", "items": { "type": "string", "format": "uri" }, "maxItems": 10 },
+                  "hourly_rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000,
+                    "nullable": true
+                  },
+                  "portfolio_urls": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "uri" },
+                    "maxItems": 10
+                  },
                   "location": { "type": "string", "maxLength": 100, "nullable": true },
                   "timezone": { "type": "string", "maxLength": 50, "nullable": true },
                   "is_available": { "type": "boolean" },
-                  "wallet_addresses": { "type": "array", "items": { "$ref": "#/components/schemas/WalletAddress" }, "maxItems": 10 },
-                  "rate_type": { "type": "string", "enum": ["fixed", "hourly", "per_task", "per_unit", "revenue_share"], "nullable": true },
+                  "wallet_addresses": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/WalletAddress" },
+                    "maxItems": 10
+                  },
+                  "rate_type": {
+                    "type": "string",
+                    "enum": ["fixed", "hourly", "per_task", "per_unit", "revenue_share"],
+                    "nullable": true
+                  },
                   "rate_amount": { "type": "number", "nullable": true },
                   "rate_unit": { "type": "string", "nullable": true },
                   "preferred_coin": { "type": "string", "nullable": true },
@@ -906,8 +1071,18 @@
               }
             }
           },
-          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -934,7 +1109,12 @@
         },
         "responses": {
           "200": { "description": "Avatar uploaded successfully" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -961,7 +1141,12 @@
         },
         "responses": {
           "200": { "description": "Banner uploaded successfully" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -988,7 +1173,12 @@
         },
         "responses": {
           "200": { "description": "Parsed profile data" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1015,7 +1205,12 @@
               }
             }
           },
-          "404": { "description": "User not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1054,11 +1249,38 @@
         ],
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "responses": {
-          "201": { "description": "Followed successfully", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } },
-          "400": { "description": "Cannot follow yourself", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "User not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "409": { "description": "Already following", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "201": {
+            "description": "Followed successfully",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } }
+              }
+            }
+          },
+          "400": {
+            "description": "Cannot follow yourself",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "409": {
+            "description": "Already following",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -1070,9 +1292,26 @@
         ],
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "responses": {
-          "200": { "description": "Unfollowed successfully", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "User not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "200": {
+            "description": "Unfollowed successfully",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1093,7 +1332,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/ProfileSummary" } }
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ProfileSummary" }
+                    }
                   }
                 }
               }
@@ -1119,7 +1361,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/ProfileSummary" } }
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ProfileSummary" }
+                    }
                   }
                 }
               }
@@ -1167,10 +1412,30 @@
               }
             }
           },
-          "400": { "description": "Validation error or cannot endorse self", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "User not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "409": { "description": "Already endorsed this skill", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error or cannot endorse self",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "409": {
+            "description": "Already endorsed this skill",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -1184,8 +1449,18 @@
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "responses": {
           "200": { "description": "Endorsement removed" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "User not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1206,7 +1481,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Endorsement" } }
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Endorsement" }
+                    }
                   }
                 }
               }
@@ -1223,7 +1501,11 @@
         "operationId": "getUserReviews",
         "parameters": [
           { "name": "username", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 50 } },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20, "maximum": 50 }
+          },
           { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
         ],
         "responses": {
@@ -1252,7 +1534,11 @@
         "operationId": "getUserActivity",
         "parameters": [
           { "name": "username", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 50 } },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20, "maximum": 50 }
+          },
           { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
         ],
         "responses": {
@@ -1263,7 +1549,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Activity" } },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Activity" }
+                    },
                     "pagination": { "$ref": "#/components/schemas/OffsetPagination" }
                   }
                 }
@@ -1280,17 +1569,55 @@
         "description": "Browse active gigs with filtering, search, and pagination. No authentication required.",
         "operationId": "listGigs",
         "parameters": [
-          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search title and description" },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Search title and description"
+          },
           { "name": "category", "in": "query", "schema": { "type": "string" } },
-          { "name": "skills", "in": "query", "schema": { "type": "string" }, "description": "Comma-separated skill tags" },
-          { "name": "budget_type", "in": "query", "schema": { "type": "string", "enum": ["fixed", "hourly", "per_task", "per_unit", "revenue_share"] } },
+          {
+            "name": "skills",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Comma-separated skill tags"
+          },
+          {
+            "name": "budget_type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["fixed", "hourly", "per_task", "per_unit", "revenue_share"]
+            }
+          },
           { "name": "budget_min", "in": "query", "schema": { "type": "number" } },
           { "name": "budget_max", "in": "query", "schema": { "type": "number" } },
-          { "name": "location_type", "in": "query", "schema": { "type": "string", "enum": ["remote", "onsite", "hybrid"] } },
-          { "name": "account_type", "in": "query", "schema": { "type": "string", "enum": ["human", "agent"] }, "description": "Filter by poster account type" },
-          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["newest", "oldest", "budget_high", "budget_low"], "default": "newest" } },
+          {
+            "name": "location_type",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["remote", "onsite", "hybrid"] }
+          },
+          {
+            "name": "account_type",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["human", "agent"] },
+            "description": "Filter by poster account type"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["newest", "oldest", "budget_high", "budget_low"],
+              "default": "newest"
+            }
+          },
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 50 } }
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20, "maximum": 50 }
+          }
         ],
         "responses": {
           "200": {
@@ -1307,7 +1634,12 @@
               }
             }
           },
-          "400": { "description": "Invalid filters", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Invalid filters",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "post": {
@@ -1338,9 +1670,24 @@
               }
             }
           },
-          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Monthly gig limit reached", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Monthly gig limit reached",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1365,7 +1712,12 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1376,7 +1728,12 @@
         "description": "Fetch a single gig by ID. Increments view count.",
         "operationId": "getGig",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": {
@@ -1392,7 +1749,12 @@
               }
             }
           },
-          "404": { "description": "Gig not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": {
+            "description": "Gig not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "put": {
@@ -1402,7 +1764,12 @@
         "operationId": "updateGig",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -1426,10 +1793,30 @@
               }
             }
           },
-          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the gig owner", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Gig not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the gig owner",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Gig not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -1439,13 +1826,191 @@
         "operationId": "deleteGig",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
-          "200": { "description": "Gig deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" } } } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the gig owner", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Gig not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "200": {
+            "description": "Gig deleted",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "message": { "type": "string" } } }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the gig owner",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Gig not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/gigs/{id}/invoice": {
+      "get": {
+        "tags": ["Invoices"],
+        "summary": "List gig invoices",
+        "description": "List invoices for a gig where the authenticated user is the poster or worker.",
+        "operationId": "listGigInvoices",
+        "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invoices for the gig",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "gig_id": { "type": "string", "format": "uuid" },
+                          "application_id": { "type": "string", "format": "uuid" },
+                          "worker_id": { "type": "string", "format": "uuid" },
+                          "poster_id": { "type": "string", "format": "uuid" },
+                          "amount_usd": { "type": "number" },
+                          "currency": { "type": "string" },
+                          "status": {
+                            "type": "string",
+                            "enum": ["sent", "paid", "expired", "cancelled"]
+                          },
+                          "coinpay_invoice_id": { "type": "string", "nullable": true },
+                          "metadata": { "type": "object", "additionalProperties": true },
+                          "created_at": { "type": "string", "format": "date-time" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Invoices"],
+        "summary": "Create a gig invoice payment",
+        "description": "Create an in-app CoinPayPortal payment request for an accepted gig application. Direct gig payments through /api/payments/coinpayportal/create are not supported.",
+        "operationId": "createGigInvoice",
+        "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["application_id", "amount"],
+                "properties": {
+                  "application_id": { "type": "string", "format": "uuid" },
+                  "amount": { "type": "number", "exclusiveMinimum": 0 },
+                  "currency": { "type": "string", "default": "USD" },
+                  "notes": { "type": "string" },
+                  "due_date": { "type": "string", "format": "date" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Invoice payment created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "invoice_id": { "type": "string", "format": "uuid" },
+                        "coinpay_invoice_id": { "type": "string" },
+                        "pay_url": { "type": "string", "nullable": true },
+                        "payment_address": { "type": "string" },
+                        "amount_crypto": {
+                          "oneOf": [{ "type": "string" }, { "type": "number" }, { "type": "null" }]
+                        },
+                        "payment_currency": { "type": "string" },
+                        "expires_at": { "type": "string", "format": "date-time", "nullable": true },
+                        "metadata": { "type": "object", "additionalProperties": true }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or application not accepted",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Only the worker or gig poster can create an invoice",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Gig or application not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "502": {
+            "description": "CoinPayPortal did not return usable payment details",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1457,7 +2022,12 @@
         "operationId": "updateGigStatus",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -1467,7 +2037,10 @@
                 "type": "object",
                 "required": ["status"],
                 "properties": {
-                  "status": { "type": "string", "enum": ["draft", "active", "paused", "closed", "filled"] }
+                  "status": {
+                    "type": "string",
+                    "enum": ["draft", "active", "paused", "closed", "filled"]
+                  }
                 }
               }
             }
@@ -1475,8 +2048,18 @@
         },
         "responses": {
           "200": { "description": "Status updated" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Forbidden", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1488,7 +2071,12 @@
         "operationId": "getGigApplications",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": {
@@ -1498,14 +2086,27 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "applications": { "type": "array", "items": { "$ref": "#/components/schemas/Application" } }
+                    "applications": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Application" }
+                    }
                   }
                 }
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the gig owner", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the gig owner",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1516,7 +2117,12 @@
         "description": "Get threaded comments/questions on a gig. Public endpoint.",
         "operationId": "getGigComments",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": {
@@ -1526,14 +2132,22 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "comments": { "type": "array", "items": { "$ref": "#/components/schemas/Comment" } },
+                    "comments": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Comment" }
+                    },
                     "total": { "type": "integer" }
                   }
                 }
               }
             }
           },
-          "404": { "description": "Gig not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": {
+            "description": "Gig not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "post": {
@@ -1543,7 +2157,12 @@
         "operationId": "createGigComment",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -1567,9 +2186,24 @@
               }
             }
           },
-          "400": { "description": "Validation error or nested reply attempt", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Gig or parent comment not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error or nested reply attempt",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Gig or parent comment not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1580,8 +2214,18 @@
         "operationId": "updateGigComment",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "commentId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -1599,8 +2243,18 @@
         },
         "responses": {
           "200": { "description": "Comment updated" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the comment author", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the comment author",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -1609,13 +2263,33 @@
         "operationId": "deleteGigComment",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "commentId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Comment deleted" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the comment author", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the comment author",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1648,9 +2322,24 @@
               }
             }
           },
-          "400": { "description": "Validation error, gig inactive, already applied, or own gig", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Gig not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error, gig inactive, already applied, or own gig",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Gig not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1669,13 +2358,21 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "applications": { "type": "array", "items": { "$ref": "#/components/schemas/Application" } }
+                    "applications": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Application" }
+                    }
                   }
                 }
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1687,7 +2384,12 @@
         "operationId": "updateApplicationStatus",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -1697,7 +2399,17 @@
                 "type": "object",
                 "required": ["status"],
                 "properties": {
-                  "status": { "type": "string", "enum": ["pending", "reviewing", "shortlisted", "rejected", "accepted", "withdrawn"] }
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "reviewing",
+                      "shortlisted",
+                      "rejected",
+                      "accepted",
+                      "withdrawn"
+                    ]
+                  }
                 }
               }
             }
@@ -1705,8 +2417,18 @@
         },
         "responses": {
           "200": { "description": "Status updated" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the gig owner", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the gig owner",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1725,8 +2447,14 @@
                 "type": "object",
                 "required": ["application_ids", "status"],
                 "properties": {
-                  "application_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } },
-                  "status": { "type": "string", "enum": ["pending", "reviewing", "shortlisted", "rejected", "accepted"] }
+                  "application_ids": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "uuid" }
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["pending", "reviewing", "shortlisted", "rejected", "accepted"]
+                  }
                 }
               }
             }
@@ -1734,7 +2462,12 @@
         },
         "responses": {
           "200": { "description": "Statuses updated" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1759,7 +2492,12 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "post": {
@@ -1783,10 +2521,30 @@
         },
         "responses": {
           "201": { "description": "Gig saved" },
-          "400": { "description": "Cannot save own gig or inactive gig", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Gig not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "409": { "description": "Gig already saved", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Cannot save own gig or inactive gig",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Gig not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "409": {
+            "description": "Gig already saved",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -1809,8 +2567,20 @@
           }
         },
         "responses": {
-          "200": { "description": "Gig unsaved", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" } } } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "200": {
+            "description": "Gig unsaved",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "message": { "type": "string" } } }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1821,10 +2591,22 @@
         "description": "Paginated community feed with Reddit-style sorting. Public endpoint; authenticated users see their vote info.",
         "operationId": "getFeed",
         "parameters": [
-          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["hot", "new", "top", "rising"], "default": "hot" } },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["hot", "new", "top", "rising"],
+              "default": "hot"
+            }
+          },
           { "name": "tag", "in": "query", "schema": { "type": "string" } },
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 50 } }
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20, "maximum": 50 }
+          }
         ],
         "responses": {
           "200": {
@@ -1873,8 +2655,18 @@
               }
             }
           },
-          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1885,7 +2677,12 @@
         "description": "Fetch a single post. Increments view count.",
         "operationId": "getPost",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": {
@@ -1901,7 +2698,12 @@
               }
             }
           },
-          "404": { "description": "Post not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": {
+            "description": "Post not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "put": {
@@ -1911,7 +2713,12 @@
         "operationId": "updatePost",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -1935,9 +2742,24 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the post author", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Post not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the post author",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Post not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -1946,13 +2768,40 @@
         "operationId": "deletePost",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
-          "200": { "description": "Post deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" } } } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the post author", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Post not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "200": {
+            "description": "Post deleted",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "message": { "type": "string" } } }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the post author",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Post not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1964,11 +2813,21 @@
         "operationId": "upvotePost",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Vote recorded" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1980,11 +2839,21 @@
         "operationId": "downvotePost",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Vote recorded" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -1995,7 +2864,12 @@
         "description": "Get threaded comments on a community post.",
         "operationId": "getPostComments",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": {
@@ -2005,7 +2879,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "comments": { "type": "array", "items": { "$ref": "#/components/schemas/Comment" } },
+                    "comments": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Comment" }
+                    },
                     "total": { "type": "integer" }
                   }
                 }
@@ -2020,7 +2897,12 @@
         "operationId": "createPostComment",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -2032,7 +2914,12 @@
         },
         "responses": {
           "201": { "description": "Comment created" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2043,8 +2930,18 @@
         "operationId": "updatePostComment",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "commentId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -2062,8 +2959,18 @@
         },
         "responses": {
           "200": { "description": "Comment updated" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the comment author", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the comment author",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -2072,13 +2979,33 @@
         "operationId": "deletePostComment",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "commentId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Comment deleted" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the comment author", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the comment author",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2097,13 +3024,21 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Conversation" } }
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Conversation" }
+                    }
                   }
                 }
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "post": {
@@ -2120,7 +3055,12 @@
                 "type": "object",
                 "required": ["recipient_id"],
                 "properties": {
-                  "gig_id": { "type": "string", "format": "uuid", "nullable": true, "description": "Scope conversation to a gig (optional)" },
+                  "gig_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "nullable": true,
+                    "description": "Scope conversation to a gig (optional)"
+                  },
                   "recipient_id": { "type": "string", "format": "uuid" }
                 }
               }
@@ -2128,12 +3068,52 @@
           }
         },
         "responses": {
-          "200": { "description": "Existing conversation returned", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Conversation" } } } } } },
-          "201": { "description": "New conversation created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Conversation" } } } } } },
-          "400": { "description": "Cannot message yourself", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Must be gig poster or applicant", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Recipient or gig not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "200": {
+            "description": "Existing conversation returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "$ref": "#/components/schemas/Conversation" } }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "New conversation created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "$ref": "#/components/schemas/Conversation" } }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cannot message yourself",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Must be gig poster or applicant",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Recipient or gig not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2144,12 +3124,37 @@
         "operationId": "getConversation",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
-          "200": { "description": "Conversation details", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Conversation" } } } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "200": {
+            "description": "Conversation details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "$ref": "#/components/schemas/Conversation" } }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2161,8 +3166,18 @@
         "operationId": "listMessages",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "cursor", "in": "query", "schema": { "type": "string" }, "description": "Cursor for pagination (message ID)" }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Cursor for pagination (message ID)"
+          }
         ],
         "responses": {
           "200": {
@@ -2178,7 +3193,12 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "post": {
@@ -2187,7 +3207,12 @@
         "operationId": "sendMessage",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -2204,8 +3229,23 @@
           }
         },
         "responses": {
-          "201": { "description": "Message sent", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Message" } } } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "201": {
+            "description": "Message sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "$ref": "#/components/schemas/Message" } }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2217,7 +3257,12 @@
         "operationId": "getTyping",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": {
@@ -2241,7 +3286,12 @@
         "operationId": "sendTyping",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Typing indicator sent" }
@@ -2256,7 +3306,12 @@
         "operationId": "streamMessages",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": {
@@ -2277,11 +3332,21 @@
         "operationId": "markMessageRead",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Message marked as read" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2293,8 +3358,17 @@
         "operationId": "listNotifications",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "unread", "in": "query", "schema": { "type": "boolean" }, "description": "Filter to unread only" },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } },
+          {
+            "name": "unread",
+            "in": "query",
+            "schema": { "type": "boolean" },
+            "description": "Filter to unread only"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50, "maximum": 100 }
+          },
           { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
         ],
         "responses": {
@@ -2305,7 +3379,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "notifications": { "type": "array", "items": { "$ref": "#/components/schemas/Notification" } },
+                    "notifications": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Notification" }
+                    },
                     "pagination": { "$ref": "#/components/schemas/OffsetPagination" },
                     "unread_count": { "type": "integer" }
                   }
@@ -2313,7 +3390,12 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2324,11 +3406,21 @@
         "operationId": "getNotification",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Notification details" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "put": {
@@ -2337,11 +3429,21 @@
         "operationId": "markNotificationRead",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Notification marked as read" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -2350,11 +3452,21 @@
         "operationId": "deleteNotification",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Notification deleted" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2365,11 +3477,21 @@
         "operationId": "markNotificationReadAlt",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Marked as read" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2381,7 +3503,12 @@
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "responses": {
           "200": { "description": "All notifications marked as read" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2393,7 +3520,11 @@
         "operationId": "listReviews",
         "parameters": [
           { "name": "gig_id", "in": "query", "schema": { "type": "string", "format": "uuid" } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 50 } },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20, "maximum": 50 }
+          },
           { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
         ],
         "responses": {
@@ -2441,10 +3572,30 @@
               }
             }
           },
-          "400": { "description": "Validation error, self-review, duplicate, or not involved", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not involved in this gig", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Gig not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error, self-review, duplicate, or not involved",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not involved in this gig",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Gig not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2454,11 +3605,21 @@
         "summary": "Get a review",
         "operationId": "getReview",
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Review details" },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "put": {
@@ -2467,7 +3628,12 @@
         "operationId": "updateReview",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -2485,8 +3651,18 @@
         },
         "responses": {
           "200": { "description": "Review updated" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the reviewer", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the reviewer",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -2495,12 +3671,27 @@
         "operationId": "deleteReview",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Review deleted" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the reviewer", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the reviewer",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2511,8 +3702,17 @@
         "operationId": "listVideoCalls",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "upcoming", "in": "query", "schema": { "type": "boolean" }, "description": "Only show scheduled, not-yet-started calls" },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 50 } }
+          {
+            "name": "upcoming",
+            "in": "query",
+            "schema": { "type": "boolean" },
+            "description": "Only show scheduled, not-yet-started calls"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20, "maximum": 50 }
+          }
         ],
         "responses": {
           "200": {
@@ -2522,13 +3722,21 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/VideoCall" } }
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/VideoCall" }
+                    }
                   }
                 }
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "post": {
@@ -2568,9 +3776,24 @@
               }
             }
           },
-          "400": { "description": "Cannot call yourself", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Participant not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Cannot call yourself",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Participant not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2581,11 +3804,21 @@
         "operationId": "getVideoCall",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Video call details" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "patch": {
@@ -2594,7 +3827,12 @@
         "operationId": "updateVideoCall",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -2612,7 +3850,12 @@
         },
         "responses": {
           "200": { "description": "Call updated" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -2621,11 +3864,21 @@
         "operationId": "cancelVideoCall",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Call cancelled" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2644,13 +3897,21 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "work_history": { "type": "array", "items": { "$ref": "#/components/schemas/WorkHistory" } }
+                    "work_history": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/WorkHistory" }
+                    }
                   }
                 }
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "post": {
@@ -2680,8 +3941,18 @@
               }
             }
           },
-          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2692,7 +3963,12 @@
         "operationId": "updateWorkHistory",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -2704,8 +3980,18 @@
         },
         "responses": {
           "200": { "description": "Entry updated" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Not the entry owner", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Not the entry owner",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -2714,11 +4000,21 @@
         "operationId": "deleteWorkHistory",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "Entry deleted" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2743,7 +4039,12 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "post": {
@@ -2777,7 +4078,10 @@
                   "properties": {
                     "id": { "type": "string", "format": "uuid" },
                     "name": { "type": "string" },
-                    "key": { "type": "string", "description": "The full API key. Only returned once!" },
+                    "key": {
+                      "type": "string",
+                      "description": "The full API key. Only returned once!"
+                    },
                     "key_prefix": { "type": "string" },
                     "created_at": { "type": "string", "format": "date-time" },
                     "expires_at": { "type": "string", "format": "date-time", "nullable": true }
@@ -2786,8 +4090,18 @@
               }
             }
           },
-          "400": { "description": "Validation error or duplicate name", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error or duplicate name",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2798,11 +4112,21 @@
         "operationId": "revokeApiKey",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
         ],
         "responses": {
           "200": { "description": "API key revoked" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2814,7 +4138,11 @@
         "operationId": "getMyActivity",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 50 } },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20, "maximum": 50 }
+          },
           { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
         ],
         "responses": {
@@ -2825,14 +4153,22 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Activity" } },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Activity" }
+                    },
                     "pagination": { "$ref": "#/components/schemas/OffsetPagination" }
                   }
                 }
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2857,7 +4193,12 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "put": {
@@ -2868,9 +4209,24 @@
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "responses": {
           "200": { "description": "Subscription reactivated" },
-          "400": { "description": "Not scheduled for cancellation", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "No subscription found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Not scheduled for cancellation",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "No subscription found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -2881,8 +4237,18 @@
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "responses": {
           "200": { "description": "Subscription will be canceled at period end" },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "No subscription found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "No subscription found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2907,7 +4273,12 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2932,7 +4303,12 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2940,7 +4316,7 @@
       "post": {
         "tags": ["Payments"],
         "summary": "Create a crypto payment",
-        "description": "Initiate a cryptocurrency payment via CoinPayPortal for subscriptions, gig payments, or tips.",
+        "description": "Initiate a cryptocurrency payment via CoinPayPortal for subscriptions, tips, or platform funding. Gig work must be paid through /api/gigs/{id}/invoice. Bounties use the bounty payout endpoint.",
         "operationId": "createPayment",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "requestBody": {
@@ -2951,11 +4327,21 @@
                 "type": "object",
                 "required": ["type", "currency"],
                 "properties": {
-                  "type": { "type": "string", "enum": ["subscription", "gig_payment", "tip"] },
-                  "plan": { "type": "string", "enum": ["monthly", "annual"], "description": "Required for subscription type" },
-                  "currency": { "type": "string", "enum": ["usdc_pol", "usdc_sol", "pol", "sol", "btc", "eth", "usdc_eth", "usdt"] },
-                  "amount_usd": { "type": "number", "minimum": 1, "description": "Required for gig_payment and tip types" },
-                  "gig_id": { "type": "string", "format": "uuid", "description": "Required for gig_payment type" }
+                  "type": { "type": "string", "enum": ["subscription", "tip", "funding"] },
+                  "plan": {
+                    "type": "string",
+                    "enum": ["monthly", "annual"],
+                    "description": "Required for subscription type"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "enum": ["usdc_pol", "usdc_sol", "pol", "sol", "btc", "eth", "usdc_eth", "usdt"]
+                  },
+                  "amount_usd": {
+                    "type": "number",
+                    "minimum": 1,
+                    "description": "Required for tip and funding types"
+                  }
                 }
               }
             }
@@ -2980,8 +4366,18 @@
               }
             }
           },
-          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -2991,11 +4387,40 @@
         "summary": "List active MCP servers",
         "description": "Public paginated listing of active MCP servers with search, category filtering, tag filtering, and sorting.",
         "parameters": [
-          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search in title, description, and tagline" },
-          { "name": "category", "in": "query", "schema": { "$ref": "#/components/schemas/McpCategory" }, "description": "Filter by category" },
-          { "name": "tag", "in": "query", "schema": { "type": "string" }, "description": "Filter by tags (comma-separated)" },
-          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["newest", "popular", "rating", "price_low", "price_high"], "default": "newest" }, "description": "Sort order" },
-          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 }, "description": "Page number (20 items per page)" }
+          {
+            "name": "search",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Search in title, description, and tagline"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/McpCategory" },
+            "description": "Filter by category"
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by tags (comma-separated)"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["newest", "popular", "rating", "price_low", "price_high"],
+              "default": "newest"
+            },
+            "description": "Sort order"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 },
+            "description": "Page number (20 items per page)"
+          }
         ],
         "responses": {
           "200": {
@@ -3005,7 +4430,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "listings": { "type": "array", "items": { "$ref": "#/components/schemas/McpListing" } },
+                    "listings": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/McpListing" }
+                    },
                     "total": { "type": "integer" },
                     "page": { "type": "integer" },
                     "per_page": { "type": "integer" }
@@ -3014,7 +4442,12 @@
               }
             }
           },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "post": {
@@ -3044,9 +4477,24 @@
               }
             }
           },
-          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -3064,7 +4512,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "listings": { "type": "array", "items": { "$ref": "#/components/schemas/McpListing" } },
+                    "listings": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/McpListing" }
+                    },
                     "stats": {
                       "type": "object",
                       "properties": {
@@ -3077,8 +4528,18 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -3088,7 +4549,13 @@
         "summary": "Get a single MCP listing by slug",
         "description": "Returns listing details, seller profile, reviews, purchase status, and user vote. If authenticated, includes whether the current user has purchased and their vote.",
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "URL slug of the MCP listing" }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "URL slug of the MCP listing"
+          }
         ],
         "responses": {
           "200": {
@@ -3099,16 +4566,37 @@
                   "type": "object",
                   "properties": {
                     "listing": { "$ref": "#/components/schemas/McpListing" },
-                    "purchased": { "type": "boolean", "description": "Whether the current user has purchased this listing" },
-                    "user_vote": { "type": "integer", "nullable": true, "enum": [1, -1, null], "description": "Current user's vote (1=up, -1=down, null=none)" },
-                    "reviews": { "type": "array", "items": { "$ref": "#/components/schemas/McpReview" } }
+                    "purchased": {
+                      "type": "boolean",
+                      "description": "Whether the current user has purchased this listing"
+                    },
+                    "user_vote": {
+                      "type": "integer",
+                      "nullable": true,
+                      "enum": [1, -1, null],
+                      "description": "Current user's vote (1=up, -1=down, null=none)"
+                    },
+                    "reviews": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/McpReview" }
+                    }
                   }
                 }
               }
             }
           },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "patch": {
@@ -3117,7 +4605,13 @@
         "description": "Partially update an MCP listing. Only the listing owner can update.",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "URL slug of the MCP listing" }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "URL slug of the MCP listing"
+          }
         ],
         "requestBody": {
           "required": true,
@@ -3141,11 +4635,36 @@
               }
             }
           },
-          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Forbidden — not the listing owner", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Forbidden — not the listing owner",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "delete": {
@@ -3154,7 +4673,13 @@
         "description": "Soft-delete (archive) an MCP listing. Only the listing owner can archive.",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "URL slug of the MCP listing" }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "URL slug of the MCP listing"
+          }
         ],
         "responses": {
           "200": {
@@ -3170,10 +4695,30 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Forbidden — not the listing owner", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Forbidden — not the listing owner",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -3184,7 +4729,13 @@
         "description": "Purchase an MCP server listing using wallet balance. Cannot purchase your own listing or re-purchase.",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "URL slug of the MCP listing" }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "URL slug of the MCP listing"
+          }
         ],
         "responses": {
           "200": {
@@ -3195,12 +4746,42 @@
               }
             }
           },
-          "400": { "description": "Listing not active or cannot purchase own listing", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "402": { "description": "Insufficient balance", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "409": { "description": "Already purchased", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Listing not active or cannot purchase own listing",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "402": {
+            "description": "Insufficient balance",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "409": {
+            "description": "Already purchased",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -3211,7 +4792,13 @@
         "description": "Returns the MCP server URL and connection info. Requires purchase (or ownership). Increments download count.",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "URL slug of the MCP listing" }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "URL slug of the MCP listing"
+          }
         ],
         "responses": {
           "200": {
@@ -3222,10 +4809,30 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Purchase required", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Not found or no server URL", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Purchase required",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Not found or no server URL",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -3236,7 +4843,13 @@
         "description": "Toggle upvote/downvote on an MCP listing. Sending the same vote_type again removes the vote.",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "URL slug of the MCP listing" }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "URL slug of the MCP listing"
+          }
         ],
         "requestBody": {
           "required": true,
@@ -3255,10 +4868,30 @@
               }
             }
           },
-          "400": { "description": "Invalid vote_type or listing not active", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Invalid vote_type or listing not active",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -3268,7 +4901,13 @@
         "summary": "List reviews for an MCP server",
         "description": "Returns all reviews for an MCP listing, ordered newest first.",
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "URL slug of the MCP listing" }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "URL slug of the MCP listing"
+          }
         ],
         "responses": {
           "200": {
@@ -3278,14 +4917,27 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "reviews": { "type": "array", "items": { "$ref": "#/components/schemas/McpReview" } }
+                    "reviews": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/McpReview" }
+                    }
                   }
                 }
               }
             }
           },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "post": {
@@ -3294,7 +4946,13 @@
         "description": "Submit a review for a purchased MCP server. Only one review per purchase is allowed.",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "URL slug of the MCP listing" }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "URL slug of the MCP listing"
+          }
         ],
         "requestBody": {
           "required": true,
@@ -3318,12 +4976,42 @@
               }
             }
           },
-          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Purchase required before reviewing", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "409": { "description": "Already reviewed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Purchase required before reviewing",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "409": {
+            "description": "Already reviewed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -3333,7 +5021,13 @@
         "summary": "List comments on an MCP listing",
         "description": "Returns threaded comments for an active MCP listing, built into a tree structure.",
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "URL slug of the MCP listing" }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "URL slug of the MCP listing"
+          }
         ],
         "responses": {
           "200": {
@@ -3343,15 +5037,28 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "comments": { "type": "array", "items": { "$ref": "#/components/schemas/McpComment" } },
+                    "comments": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/McpComment" }
+                    },
                     "total": { "type": "integer", "description": "Total flat comment count" }
                   }
                 }
               }
             }
           },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       },
       "post": {
@@ -3360,7 +5067,13 @@
         "description": "Post a comment or reply on an active MCP listing. Supports threaded replies up to 5 levels deep.",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "URL slug of the MCP listing" }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "URL slug of the MCP listing"
+          }
         ],
         "requestBody": {
           "required": true,
@@ -3384,10 +5097,30 @@
               }
             }
           },
-          "400": { "description": "Validation error or listing not active", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Listing or parent comment not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "400": {
+            "description": "Validation error or listing not active",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Listing or parent comment not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     },
@@ -3398,7 +5131,13 @@
         "description": "Run SpiderShield + mcp-scan security analysis on the MCP server. Only the listing owner can trigger scans. Requires a server URL or source URL.",
         "security": [{ "bearerAuth": [] }, { "apiKey": [] }],
         "parameters": [
-          { "name": "slug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "URL slug of the MCP listing" }
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "URL slug of the MCP listing"
+          }
         ],
         "responses": {
           "200": {
@@ -3409,11 +5148,36 @@
               }
             }
           },
-          "401": { "description": "Unauthorized", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "403": { "description": "Forbidden — not the listing owner", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "404": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "422": { "description": "No scannable content (missing server URL and source URL)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "500": { "description": "Server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "403": {
+            "description": "Forbidden — not the listing owner",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "422": {
+            "description": "No scannable content (missing server URL and source URL)",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
         }
       }
     }

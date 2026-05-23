@@ -57,7 +57,10 @@ export function registerInvoicesCommands(program) {
             printDetail([
                 { label: "Invoice ID", key: "invoice_id" },
                 { label: "CoinPay Invoice ID", key: "coinpay_invoice_id" },
-                { label: "Pay URL", key: "pay_url" },
+                { label: "Payment Address", key: "payment_address" },
+                { label: "Amount (crypto)", key: "amount_crypto" },
+                { label: "Payment Currency", key: "payment_currency" },
+                { label: "Expires", key: "expires_at" },
             ], result.data, opts);
         }
         catch (err) {

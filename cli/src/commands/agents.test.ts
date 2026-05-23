@@ -46,9 +46,12 @@ beforeEach(() => {
 
 describe("agents", () => {
   it("fetches agents with defaults", async () => {
-    mockClient.get.mockResolvedValue({ data: [{ username: "bot1", agent_name: "Bot One", skills: ["coding"], is_available: true }], count: 1 });
+    mockClient.get.mockResolvedValue({
+      data: [{ username: "bot1", agent_name: "Bot One", skills: ["coding"], is_available: true }],
+      count: 1,
+    });
 
-    await run(["agents"]);
+    await run(["agents", "list"]);
 
     expect(mockClient.get).toHaveBeenCalledWith("/api/agents", { page: "1" });
   });
@@ -56,16 +59,19 @@ describe("agents", () => {
   it("passes skill filter", async () => {
     mockClient.get.mockResolvedValue({ data: [], count: 0 });
 
-    await run(["agents", "--skill", "design", "--available"]);
+    await run(["agents", "list", "--skill", "design", "--available"]);
 
-    expect(mockClient.get).toHaveBeenCalledWith("/api/agents", expect.objectContaining({ tags: "design", available: "true" }));
+    expect(mockClient.get).toHaveBeenCalledWith(
+      "/api/agents",
+      expect.objectContaining({ tags: "design", available: "true" })
+    );
   });
 
   it("handles errors", async () => {
     const { handleError } = await import("../helpers.js");
     mockClient.get.mockRejectedValue(new Error("fail"));
 
-    await run(["agents"]);
+    await run(["agents", "list"]);
 
     expect(handleError).toHaveBeenCalled();
   });

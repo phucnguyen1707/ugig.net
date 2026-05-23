@@ -30,12 +30,19 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { data: submission } = await (supabase as any)
+    const { data: submission, error: submissionError } = await (supabase as any)
       .from("bounty_submissions")
       .select("id, submitter_id, status, payout_status, pay_url, coinpay_invoice_id, metadata")
       .eq("id", sid)
       .eq("bounty_id", bountyId)
       .single();
+    if (submissionError) {
+      console.error("[bounty pay] failed to load submission:", submissionError);
+      return NextResponse.json(
+        { error: submissionError.message || "Failed to load submission" },
+        { status: 400 }
+      );
+    }
     if (!submission) {
       return NextResponse.json({ error: "Submission not found" }, { status: 404 });
     }

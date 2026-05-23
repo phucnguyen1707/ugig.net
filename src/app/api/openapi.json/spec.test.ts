@@ -30,6 +30,7 @@ describe("OpenAPI spec (public/openapi.json)", () => {
       "/api/notifications",
       "/api/reviews",
       "/api/applications",
+      "/api/gigs/{id}/invoice",
     ];
 
     for (const p of requiredPaths) {
@@ -70,13 +71,8 @@ describe("OpenAPI spec (public/openapi.json)", () => {
 
     for (const pathKey of pathKeys) {
       const pathObj = paths[pathKey as keyof typeof paths] as Record<string, unknown>;
-      const methods = Object.keys(pathObj).filter((k) =>
-        VALID_HTTP_METHODS.includes(k),
-      );
-      expect(
-        methods.length,
-        `Path "${pathKey}" has no HTTP methods defined`,
-      ).toBeGreaterThan(0);
+      const methods = Object.keys(pathObj).filter((k) => VALID_HTTP_METHODS.includes(k));
+      expect(methods.length, `Path "${pathKey}" has no HTTP methods defined`).toBeGreaterThan(0);
     }
   });
 
@@ -116,5 +112,14 @@ describe("OpenAPI spec (public/openapi.json)", () => {
       expect(server.url).toBeDefined();
       expect(typeof server.url).toBe("string");
     }
+  });
+
+  it("documents gig payments as invoice-only", () => {
+    const createPayment = spec.paths["/api/payments/coinpayportal/create"].post;
+    const typeEnum =
+      createPayment.requestBody.content["application/json"].schema.properties.type.enum;
+
+    expect(typeEnum).not.toContain("gig_payment");
+    expect(spec.paths).toHaveProperty("/api/gigs/{id}/invoice");
   });
 });

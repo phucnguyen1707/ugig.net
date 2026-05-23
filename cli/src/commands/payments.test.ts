@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Command } from "commander";
 import { registerPaymentsCommands } from "./payments.js";
+import { handleError } from "../helpers.js";
 
 // ── Mocks ──────────────────────────────────────────────────────────
 
@@ -70,7 +71,16 @@ describe("payments create", () => {
       currency: "usdc_pol",
       expires_at: "2025-01-01T00:00:00Z",
     });
-    await run(["payments", "create", "--type", "subscription", "--currency", "usdc_pol", "--plan", "monthly"]);
+    await run([
+      "payments",
+      "create",
+      "--type",
+      "subscription",
+      "--currency",
+      "usdc_pol",
+      "--plan",
+      "monthly",
+    ]);
     expect(mockClient.post).toHaveBeenCalledWith("/api/payments/coinpayportal/create", {
       type: "subscription",
       currency: "usdc_pol",
@@ -93,6 +103,27 @@ describe("payments create", () => {
       currency: "btc",
       amount_usd: 5,
     });
+  });
+
+  it("rejects direct gig payments before calling the API", async () => {
+    await run([
+      "payments",
+      "create",
+      "--type",
+      "gig_payment",
+      "--currency",
+      "btc",
+      "--amount",
+      "100",
+    ]);
+
+    expect(mockClient.post).not.toHaveBeenCalled();
+    expect(handleError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Gig payments must be paid through invoices. Use `ugig invoices create`.",
+      }),
+      expect.objectContaining({ json: false })
+    );
   });
 });
 

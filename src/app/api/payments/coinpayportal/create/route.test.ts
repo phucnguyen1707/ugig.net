@@ -45,30 +45,10 @@ describe("POST /api/payments/coinpayportal/create", () => {
     expect(res.status).toBe(403);
   });
 
-  it("creates a gig payment using API-key auth context", async () => {
-    const insert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({
-          data: { id: "local-payment-1" },
-          error: null,
-        }),
-      }),
-    });
-    const supabase = {
-      from: vi.fn(() => ({ insert })),
-    };
-
+  it("rejects direct gig payments so gigs go through invoices", async () => {
     (getAuthContext as any).mockResolvedValue({
       user: { id: USER_ID, authMethod: "api_key", scope: "full" },
-      supabase,
-    });
-    (createPayment as any).mockResolvedValue({
-      payment_id: "coinpay-payment-1",
-      checkout_url: "https://coinpayportal.com/pay/coinpay-payment-1",
-      address: "bc1qexample",
-      amount_crypto: "0.00002",
-      currency: "btc",
-      expires_at: "2026-05-20T12:00:00Z",
+      supabase: {},
     });
 
     const res = await POST(
@@ -80,31 +60,9 @@ describe("POST /api/payments/coinpayportal/create", () => {
       })
     );
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.payment_id).toBe("local-payment-1");
-    expect(body.checkout_url).toBe("https://coinpayportal.com/pay/coinpay-payment-1");
-    expect(createPayment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        amount_usd: 2,
-        currency: "btc",
-        description: `Gig payment for ${GIG_ID}`,
-        metadata: expect.objectContaining({
-          user_id: USER_ID,
-          type: "gig_payment",
-          gig_id: GIG_ID,
-        }),
-      })
-    );
-    expect(insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user_id: USER_ID,
-        coinpay_payment_id: "coinpay-payment-1",
-        amount_usd: 2,
-        currency: "btc",
-        status: "pending",
-        type: "gig_payment",
-      })
-    );
+    expect(body.error).toBe("Gig payments must be paid through invoices");
+    expect(createPayment).not.toHaveBeenCalled();
   });
 });

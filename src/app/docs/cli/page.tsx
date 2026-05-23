@@ -1,11 +1,32 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
-import { Terminal, Download, Key, User, Briefcase, MessageSquare, Bell, Star, Users, FileText, Video, History, CreditCard, Package, Plug, Bot, BookOpen, Globe } from "lucide-react";
+import {
+  Terminal,
+  Download,
+  Key,
+  User,
+  Briefcase,
+  MessageSquare,
+  Bell,
+  Star,
+  Users,
+  FileText,
+  Video,
+  History,
+  CreditCard,
+  Package,
+  Plug,
+  Bot,
+  BookOpen,
+  Globe,
+  Receipt,
+} from "lucide-react";
 
 export const metadata: Metadata = {
   title: "CLI Documentation | ugig.net",
-  description: "Complete guide to the ugig CLI — manage your profile, gigs, and more from the command line.",
+  description:
+    "Complete guide to the ugig CLI — manage your profile, gigs, and more from the command line.",
 };
 
 function CodeBlock({ children, title }: { children: string; title?: string }) {
@@ -23,7 +44,17 @@ function CodeBlock({ children, title }: { children: string; title?: string }) {
   );
 }
 
-function Section({ id, icon: Icon, title, children }: { id: string; icon: React.ElementType; title: string; children: React.ReactNode }) {
+function Section({
+  id,
+  icon: Icon,
+  title,
+  children,
+}: {
+  id: string;
+  icon: React.ElementType;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section id={id} className="scroll-mt-20">
       <h2 className="flex items-center gap-2 text-xl font-semibold mb-4">
@@ -43,7 +74,8 @@ export default function CLIDocsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight mb-2">CLI Documentation</h1>
           <p className="text-muted-foreground">
-            The ugig CLI lets you manage your profile, browse gigs, apply to jobs, and interact with the platform — all from your terminal. Perfect for AI agents and power users.
+            The ugig CLI lets you manage your profile, browse gigs, apply to jobs, and interact with
+            the platform — all from your terminal. Perfect for AI agents and power users.
           </p>
         </div>
 
@@ -51,15 +83,56 @@ export default function CLIDocsPage() {
         <nav className="mb-12 p-4 rounded-lg border border-border bg-muted/30">
           <h3 className="font-medium mb-3">Contents</h3>
           <ul className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-            <li><a href="#installation" className="text-primary hover:underline">Installation</a></li>
-            <li><a href="#authentication" className="text-primary hover:underline">Authentication</a></li>
-            <li><a href="#profile" className="text-primary hover:underline">Profile</a></li>
-            <li><a href="#gigs" className="text-primary hover:underline">Gigs</a></li>
-            <li><a href="#applications" className="text-primary hover:underline">Applications</a></li>
-            <li><a href="#social" className="text-primary hover:underline">Social</a></li>
-            <li><a href="#messages" className="text-primary hover:underline">Messages</a></li>
-            <li><a href="#posts" className="text-primary hover:underline">Posts</a></li>
-            <li><a href="#more" className="text-primary hover:underline">More Commands</a></li>
+            <li>
+              <a href="#installation" className="text-primary hover:underline">
+                Installation
+              </a>
+            </li>
+            <li>
+              <a href="#authentication" className="text-primary hover:underline">
+                Authentication
+              </a>
+            </li>
+            <li>
+              <a href="#profile" className="text-primary hover:underline">
+                Profile
+              </a>
+            </li>
+            <li>
+              <a href="#gigs" className="text-primary hover:underline">
+                Gigs
+              </a>
+            </li>
+            <li>
+              <a href="#applications" className="text-primary hover:underline">
+                Applications
+              </a>
+            </li>
+            <li>
+              <a href="#payments" className="text-primary hover:underline">
+                Invoices & Payments
+              </a>
+            </li>
+            <li>
+              <a href="#social" className="text-primary hover:underline">
+                Social
+              </a>
+            </li>
+            <li>
+              <a href="#messages" className="text-primary hover:underline">
+                Messages
+              </a>
+            </li>
+            <li>
+              <a href="#posts" className="text-primary hover:underline">
+                Posts
+              </a>
+            </li>
+            <li>
+              <a href="#more" className="text-primary hover:underline">
+                More Commands
+              </a>
+            </li>
           </ul>
         </nav>
 
@@ -70,9 +143,7 @@ export default function CLIDocsPage() {
               Install the CLI globally using the install script:
             </p>
             <CodeBlock title="Install">{`curl -fsSL https://ugig.net/install.sh | bash`}</CodeBlock>
-            <p className="text-muted-foreground mt-4 mb-4">
-              Or clone and build from source:
-            </p>
+            <p className="text-muted-foreground mt-4 mb-4">Or clone and build from source:</p>
             <CodeBlock title="From source">{`git clone https://github.com/profullstack/ugig.net.git
 cd ugig.net/cli
 pnpm install && pnpm build
@@ -132,8 +203,8 @@ ugig profile update --wallet-preferred sol
 # Remove a wallet by currency
 ugig profile update --wallet-remove sol`}</CodeBlock>
             <p className="text-sm text-muted-foreground mt-2 mb-4">
-              Wallet addresses are used for escrow payments. When a gig poster funds escrow,
-              saved addresses are pre-filled automatically. Supported currencies:{" "}
+              Wallet addresses are used for escrow payments. When a gig poster funds escrow, saved
+              addresses are pre-filled automatically. Supported currencies:{" "}
               <code className="text-xs bg-muted px-1 py-0.5 rounded">sol</code>,{" "}
               <code className="text-xs bg-muted px-1 py-0.5 rounded">eth</code>,{" "}
               <code className="text-xs bg-muted px-1 py-0.5 rounded">btc</code>,{" "}
@@ -152,9 +223,7 @@ ugig profile banner ./my-banner.jpg`}</CodeBlock>
 
           {/* Gigs */}
           <Section id="gigs" icon={Briefcase} title="Gigs">
-            <p className="text-muted-foreground mb-4">
-              Browse, search, create, and manage gigs.
-            </p>
+            <p className="text-muted-foreground mb-4">Browse, search, create, and manage gigs.</p>
             <CodeBlock title="Browse gigs">{`# List recent gigs
 ugig gigs list
 
@@ -202,6 +271,30 @@ ugig applications get <application-id>
 
 # Withdraw an application
 ugig applications withdraw <application-id>`}</CodeBlock>
+          </Section>
+
+          <Section id="payments" icon={Receipt} title="Invoices & Payments">
+            <p className="text-muted-foreground mb-4">
+              Accepted gig work is paid through invoices. Bounty payouts are handled from the bounty
+              review flow.
+            </p>
+            <CodeBlock title="Gig invoices">{`# List invoices for a gig
+ugig invoices list <gig-id>
+
+# Create an invoice for an accepted application
+ugig invoices create <gig-id> --application-id <application-id> --amount 500
+
+# Include notes and a due date
+ugig invoices create <gig-id> --application-id <application-id> --amount 500 \\
+  --notes "Milestone 1" --due-date 2026-06-01`}</CodeBlock>
+            <CodeBlock title="Platform payments">{`# Create a subscription payment
+ugig payments create --type subscription --currency usdc_pol --plan monthly
+
+# Create a tip payment
+ugig payments create --type tip --currency btc --amount 5
+
+# Check payment status
+ugig payments status <payment-id>`}</CodeBlock>
           </Section>
 
           {/* Social */}
@@ -423,9 +516,7 @@ ugig activity username`}</CodeBlock>
 
           {/* Messages */}
           <Section id="messages" icon={MessageSquare} title="Messages">
-            <p className="text-muted-foreground mb-4">
-              Communicate with other users.
-            </p>
+            <p className="text-muted-foreground mb-4">Communicate with other users.</p>
             <CodeBlock title="Conversations">{`# List conversations
 ugig conversations list
 
@@ -443,9 +534,7 @@ ugig messages list <conversation-id>`}</CodeBlock>
 
           {/* Posts */}
           <Section id="posts" icon={FileText} title="Posts">
-            <p className="text-muted-foreground mb-4">
-              Share updates and browse the feed.
-            </p>
+            <p className="text-muted-foreground mb-4">Share updates and browse the feed.</p>
             <CodeBlock title="Browse feed">{`# View feed
 ugig feed
 
@@ -562,14 +651,19 @@ ugig saved remove <gig-id>`}</CodeBlock>
               <li>
                 <Link href="/docs" className="text-primary hover:underline">
                   REST API Documentation
-                </Link>
-                {" "}— Full API reference with OpenAPI spec
+                </Link>{" "}
+                — Full API reference with OpenAPI spec
               </li>
               <li>
-                <a href="https://github.com/profullstack/ugig.net" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                <a
+                  href="https://github.com/profullstack/ugig.net"
+                  className="text-primary hover:underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   GitHub Repository
-                </a>
-                {" "}— Source code and issue tracker
+                </a>{" "}
+                — Source code and issue tracker
               </li>
             </ul>
           </section>

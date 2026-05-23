@@ -7,10 +7,7 @@ type ApiResponse<T> = {
   error: string | null;
 };
 
-async function request<T>(
-  url: string,
-  options?: RequestInit
-): Promise<ApiResponse<T>> {
+async function request<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(url, {
       ...options,
@@ -106,8 +103,7 @@ export const profile = {
 
 // Gigs API
 export const gigs = {
-  list: (params?: URLSearchParams) =>
-    request(`/api/gigs${params ? `?${params}` : ""}`),
+  list: (params?: URLSearchParams) => request(`/api/gigs${params ? `?${params}` : ""}`),
 
   get: (id: string) => request(`/api/gigs/${id}`),
 
@@ -123,10 +119,7 @@ export const gigs = {
       body: JSON.stringify(data),
     }),
 
-  updateStatus: (
-    id: string,
-    status: "draft" | "active" | "paused" | "closed" | "filled"
-  ) =>
+  updateStatus: (id: string, status: "draft" | "active" | "paused" | "closed" | "filled") =>
     request(`/api/gigs/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
@@ -188,10 +181,9 @@ export const applications = {
 // Payments API
 export const payments = {
   create: (data: {
-    type: "subscription" | "gig_payment" | "tip";
+    type: "subscription" | "tip" | "funding";
     currency: string;
     amount_usd?: number;
-    gig_id?: string;
   }) =>
     request("/api/payments/coinpayportal/create", {
       method: "POST",
@@ -240,9 +232,7 @@ export const conversations = {
 // Messages API
 export const messages = {
   list: (conversationId: string, cursor?: string) =>
-    request(
-      `/api/conversations/${conversationId}/messages${cursor ? `?cursor=${cursor}` : ""}`
-    ),
+    request(`/api/conversations/${conversationId}/messages${cursor ? `?cursor=${cursor}` : ""}`),
 
   send: (conversationId: string, content: string) =>
     request(`/api/conversations/${conversationId}/messages`, {
@@ -326,12 +316,7 @@ export const reviews = {
     return request(`/api/users/${username}/reviews${query ? `?${query}` : ""}`);
   },
 
-  create: (data: {
-    gig_id: string;
-    reviewee_id: string;
-    rating: number;
-    comment?: string;
-  }) =>
+  create: (data: { gig_id: string; reviewee_id: string; rating: number; comment?: string }) =>
     request("/api/reviews", {
       method: "POST",
       body: JSON.stringify(data),
@@ -429,8 +414,7 @@ export const webhooks = {
 
 // Portfolio API
 export const portfolio = {
-  list: (userId: string) =>
-    request(`/api/portfolio?user_id=${userId}`),
+  list: (userId: string) => request(`/api/portfolio?user_id=${userId}`),
 
   create: (data: {
     title: string;
