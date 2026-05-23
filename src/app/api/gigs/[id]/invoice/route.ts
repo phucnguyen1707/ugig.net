@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthContext } from "@/lib/auth/get-user";
+import { createServiceClient, getAuthContext } from "@/lib/auth/get-user";
 import { createPayment, resolveSupportedPaymentCurrency } from "@/lib/coinpayportal";
+import { invoiceReceivedEmail, sendEmail } from "@/lib/email";
 import { z } from "zod";
 
 const createInvoiceSchema = z.object({
@@ -10,6 +11,17 @@ const createInvoiceSchema = z.object({
   notes: z.string().optional(),
   due_date: z.string().optional(),
 });
+
+function getInvoiceExpiresAt(invoice: { metadata?: unknown }): Date | null {
+  const metadata =
+    invoice.metadata && typeof invoice.metadata === "object"
+      ? (invoice.metadata as Record<string, unknown>)
+      : null;
+  const expiresAt = typeof metadata?.expires_at === "string" ? metadata.expires_at : null;
+  if (!expiresAt) return null;
+  const date = new Date(expiresAt);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
 
 // GET /api/gigs/[id]/invoice - Get invoices for a gig
 export async function GET(
@@ -122,6 +134,47 @@ export async function POST(
 
     const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ugig.net";
     const businessId = process.env.COINPAY_MERCHANT_ID;
+
+    const { data: openInvoices } = await (supabase as any)
+      .from("gig_invoices")
+      .select("id, coinpay_invoice_id, pay_url, status, metadata")
+      .eq("application_id", application_id)
+      .in("status", ["draft", "sent"])
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    const openInvoice = openInvoices?.[0] || null;
+    if (openInvoice) {
+      const expiresAt = getInvoiceExpiresAt(openInvoice);
+      if (!expiresAt || expiresAt > new Date()) {
+        const metadata =
+          openInvoice.metadata && typeof openInvoice.metadata === "object"
+            ? (openInvoice.metadata as Record<string, unknown>)
+            : {};
+
+        return NextResponse.json(
+          {
+            data: {
+              invoice_id: openInvoice.id,
+              coinpay_invoice_id: openInvoice.coinpay_invoice_id,
+              pay_url: openInvoice.pay_url,
+              payment_address: metadata.payment_address || null,
+              amount_crypto: metadata.amount_crypto || null,
+              payment_currency: metadata.payment_currency || null,
+              expires_at: metadata.expires_at || null,
+              metadata: openInvoice.metadata,
+            },
+          },
+          { status: 200 }
+        );
+      }
+
+      await (supabase as any)
+        .from("gig_invoices")
+        .update({ status: "expired", updated_at: new Date().toISOString() })
+        .eq("id", openInvoice.id);
+    }
+
     const paymentCurrency = await resolveSupportedPaymentCurrency(
       (gig as any).payment_coin,
       { business_id: businessId }
@@ -232,6 +285,35 @@ export async function POST(
         invoice_id: invoice.id,
       },
     });
+
+    if (!isPoster) {
+      try {
+        const adminClient = createServiceClient();
+        const { data: posterAuth } = await adminClient.auth.admin.getUserById(posterId);
+        const posterEmail = posterAuth?.user?.email;
+
+        if (posterEmail) {
+          const { data: posterProfile } = await supabase
+            .from("profiles")
+            .select("username, full_name")
+            .eq("id", posterId)
+            .single();
+
+          const posterName = posterProfile?.full_name || posterProfile?.username || "there";
+          const emailContent = invoiceReceivedEmail({
+            posterName,
+            workerName: actorName,
+            gigTitle: gig.title,
+            amountUsd: amount,
+            invoiceId: invoice.id,
+          });
+
+          await sendEmail({ to: posterEmail, ...emailContent });
+        }
+      } catch (emailError) {
+        console.error("Failed to send invoice notification email:", emailError);
+      }
+    }
 
     return NextResponse.json({
       data: {

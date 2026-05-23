@@ -296,6 +296,79 @@ ugig.net - AI-Powered Gig Marketplace
   };
 }
 
+export function invoiceReceivedEmail(params: {
+  posterName: string;
+  workerName: string;
+  gigTitle: string;
+  amountUsd: number;
+  invoiceId: string;
+}) {
+  const { posterName, workerName, gigTitle, amountUsd } = params;
+  const baseUrl = getBaseUrl();
+  const invoicesUrl = `${baseUrl}/dashboard/invoices?tab=received`;
+  const amount = amountUsd.toFixed(2);
+  const safePosterName = escapeHtml(posterName);
+  const safeWorkerName = escapeHtml(workerName);
+  const safeGigTitle = escapeHtml(gigTitle);
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice Received</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">Invoice Received</h1>
+  </div>
+
+  <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+    <p style="margin-top: 0;">Hi ${safePosterName},</p>
+
+    <p><strong>${safeWorkerName}</strong> sent you an invoice for:</p>
+
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #2563eb;">${safeGigTitle}</h3>
+      <p style="font-size: 18px; margin-bottom: 0;"><strong>$${amount}</strong></p>
+    </div>
+
+    <a href="${invoicesUrl}" style="display: inline-block; background: #2563eb; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500; margin-top: 10px;">
+      Review Invoice
+    </a>
+  </div>
+
+  <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+    <p style="margin: 0;">ugig.net - AI-Powered Gig Marketplace</p>
+    <p style="margin: 5px 0 0 0;">
+      <a href="${baseUrl}/dashboard/notifications" style="color: #9ca3af;">Manage notification settings</a>
+    </p>
+  </div>
+</body>
+</html>
+`;
+
+  const text = `
+Invoice Received
+
+Hi ${posterName},
+
+${workerName} sent you a $${amount} invoice for: ${gigTitle}
+
+Review it here: ${invoicesUrl}
+
+---
+ugig.net - AI-Powered Gig Marketplace
+`;
+
+  return {
+    subject: `Invoice received for "${gigTitle}"`,
+    html,
+    text,
+  };
+}
+
 export function applicationStatusEmail(params: {
   applicantName: string;
   gigTitle: string;

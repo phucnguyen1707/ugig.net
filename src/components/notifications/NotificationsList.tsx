@@ -130,6 +130,8 @@ export function NotificationsList() {
         return data?.reviewer_id ? `/u/${data.reviewer_id}` : "/dashboard";
       case "call_scheduled":
         return data?.call_id ? `/dashboard/calls/${data.call_id}` : "/dashboard";
+      case "payment_received":
+        return data?.invoice_id ? "/dashboard/invoices?tab=received" : "/dashboard";
       default:
         return "/dashboard";
     }

@@ -7,11 +7,28 @@ vi.mock("@/lib/coinpayportal", () => ({
 
 vi.mock("@/lib/auth/get-user", () => ({
   getAuthContext: vi.fn(),
+  createServiceClient: vi.fn(() => ({
+    auth: {
+      admin: {
+        getUserById: vi.fn().mockResolvedValue({ data: { user: { email: "poster@example.com" } } }),
+      },
+    },
+  })),
+}));
+
+vi.mock("@/lib/email", () => ({
+  invoiceReceivedEmail: vi.fn(() => ({
+    subject: "Invoice received",
+    html: "<p>Invoice received</p>",
+    text: "Invoice received",
+  })),
+  sendEmail: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 import { GET, POST } from "./route";
 import { getAuthContext } from "@/lib/auth/get-user";
 import { createPayment, resolveSupportedPaymentCurrency } from "@/lib/coinpayportal";
+import { invoiceReceivedEmail, sendEmail } from "@/lib/email";
 
 const GIG_ID = "8489a861-0999-4107-afca-2592021ac338";
 const APP_ID = "d2317730-c56a-49e9-a6e4-dc469b7605f7";
@@ -35,6 +52,38 @@ function mockSupabase(overrides: Record<string, any> = {}) {
     from: vi.fn((table: string) => {
       if (overrides[table]) return overrides[table];
       return { ...defaultChain };
+    }),
+  };
+}
+
+function mockInvoiceTable({
+  openInvoices = [],
+  insertResult,
+  onInsert,
+  update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+}: {
+  openInvoices?: any[];
+  insertResult?: any;
+  onInsert?: (row: any) => void;
+  update?: any;
+} = {}) {
+  return {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue({ data: openInvoices, error: null }),
+    update,
+    insert: vi.fn((row: any) => {
+      onInsert?.(row);
+      return {
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: insertResult || { id: "local-inv-1", metadata: {} },
+            error: null,
+          }),
+        }),
+      };
     }),
   };
 }
@@ -179,13 +228,7 @@ describe("POST /api/gigs/[id]/invoice", () => {
         eq: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({ data: application, error: null }),
       },
-      gig_invoices: {
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: invoiceRecord, error: null }),
-          }),
-        }),
-      },
+      gig_invoices: mockInvoiceTable({ insertResult: invoiceRecord }),
       profiles: {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
@@ -235,6 +278,17 @@ describe("POST /api/gigs/[id]/invoice", () => {
       "SOL",
       expect.any(Object)
     );
+    expect(invoiceReceivedEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workerName: "Test Worker",
+        gigTitle: "Test Gig",
+        amountUsd: 150,
+        invoiceId: "local-inv-1",
+      })
+    );
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "poster@example.com", subject: "Invoice received" })
+    );
   });
 
   it("allows the poster to create an invoice for the accepted worker", async () => {
@@ -254,16 +308,12 @@ describe("POST /api/gigs/[id]/invoice", () => {
         eq: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({ data: application, error: null }),
       },
-      gig_invoices: {
-        insert: vi.fn((row: any) => {
+      gig_invoices: mockInvoiceTable({
+        insertResult: invoiceRecord,
+        onInsert: (row) => {
           inserted = row;
-          return {
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({ data: invoiceRecord, error: null }),
-            }),
-          };
-        }),
-      },
+        },
+      }),
       profiles: {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
@@ -305,5 +355,48 @@ describe("POST /api/gigs/[id]/invoice", () => {
         metadata: expect.objectContaining({ initiated_by: "poster" }),
       })
     );
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("returns an existing unexpired invoice instead of creating another CoinPay payment", async () => {
+    const gig = { id: GIG_ID, title: "Test Gig", poster_id: POSTER_ID, payment_coin: "SOL" };
+    const application = { id: APP_ID, applicant_id: WORKER_ID, status: "accepted", proposed_rate: 150 };
+    const existingInvoice = {
+      id: "local-inv-existing",
+      coinpay_invoice_id: "cp-pay-existing",
+      pay_url: null,
+      status: "sent",
+      metadata: {
+        payment_address: "So11111111111111111111111111111111111111112",
+        amount_crypto: 0.75,
+        payment_currency: "sol",
+        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      },
+    };
+
+    const sb = mockSupabase({
+      gigs: {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: gig, error: null }),
+      },
+      applications: {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: application, error: null }),
+      },
+      gig_invoices: mockInvoiceTable({ openInvoices: [existingInvoice] }),
+    });
+
+    (getAuthContext as any).mockResolvedValue({ user: { id: WORKER_ID }, supabase: sb });
+
+    const res = await POST(req({ application_id: APP_ID, amount: 150 }), params);
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.invoice_id).toBe("local-inv-existing");
+    expect(body.data.coinpay_invoice_id).toBe("cp-pay-existing");
+    expect(body.data.payment_address).toBe("So11111111111111111111111111111111111111112");
+    expect(createPayment).not.toHaveBeenCalled();
   });
 });
