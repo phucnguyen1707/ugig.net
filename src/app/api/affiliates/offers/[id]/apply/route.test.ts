@@ -20,9 +20,11 @@ vi.mock("@/lib/affiliates/tracking", () => ({
 }));
 
 const mockFrom = vi.fn();
+const mockRpc = vi.fn();
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: () => ({
     from: (...args: unknown[]) => mockFrom(...args),
+    rpc: (...args: unknown[]) => mockRpc(...args),
   }),
 }));
 
@@ -64,6 +66,7 @@ describe("POST /api/affiliates/offers/[id]/apply", () => {
     vi.clearAllMocks();
     mockCheckRateLimit.mockReturnValue({ allowed: true });
     mockGenerateTrackingCode.mockReturnValue("alice-test123");
+    mockRpc.mockResolvedValue({ data: null, error: null });
   });
 
   it("rejects non-string notes before creating an application", async () => {
@@ -103,6 +106,7 @@ describe("POST /api/affiliates/offers/[id]/apply", () => {
 
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toEqual({ error: "note must be a string" });
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   it("trims string notes and stores blank notes as null", async () => {
@@ -159,5 +163,8 @@ describe("POST /api/affiliates/offers/[id]/apply", () => {
         tracking_code: "alice-test123",
       })
     );
+    expect(mockRpc).toHaveBeenCalledWith("increment_affiliate_offer_total_affiliates", {
+      p_offer_id: "offer-1",
+    });
   });
 });

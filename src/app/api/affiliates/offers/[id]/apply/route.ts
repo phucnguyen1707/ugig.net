@@ -98,21 +98,14 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // Increment offer affiliate count
+    // Increment offer affiliate count atomically in Postgres.
     try {
-      const { data: offerData } = await (admin as AnySupabase)
-        .from("affiliate_offers")
-        .select("total_affiliates")
-        .eq("id", id)
-        .single();
-      if (offerData) {
-        await (admin as AnySupabase)
-          .from("affiliate_offers")
-          .update({
-            total_affiliates: (offerData.total_affiliates || 0) + 1,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", id);
+      const { error: incrementError } = await (admin as AnySupabase).rpc(
+        "increment_affiliate_offer_total_affiliates",
+        { p_offer_id: id }
+      );
+      if (incrementError) {
+        console.warn("Failed to increment affiliate count", incrementError);
       }
     } catch {
       console.warn("Failed to increment affiliate count");
