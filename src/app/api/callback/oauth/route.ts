@@ -14,12 +14,45 @@ import { getAppUrl } from "@/lib/app-url";
 const TOKEN_URL = "https://coinpayportal.com/api/oauth/token";
 const USERINFO_URL = "https://coinpayportal.com/api/oauth/userinfo";
 
+type CoinPayOAuthState = {
+  state: string;
+  codeVerifier: string;
+  mode?: "login" | "connect";
+  userId?: string | null;
+  returnTo?: string;
+};
+
 function getAdminSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
+}
+
+function coinpayIdentityMetadata(
+  tokens: Record<string, unknown>,
+  userinfo: Record<string, unknown>
+) {
+  return {
+    name: typeof userinfo.name === "string" ? userinfo.name : null,
+    coinpay_sub: typeof userinfo.sub === "string" ? userinfo.sub : null,
+    access_token: typeof tokens.access_token === "string" ? tokens.access_token : null,
+    refresh_token: typeof tokens.refresh_token === "string" ? tokens.refresh_token : null,
+    token_type: typeof tokens.token_type === "string" ? tokens.token_type : null,
+    scope: typeof tokens.scope === "string" ? tokens.scope : null,
+    expires_at:
+      typeof tokens.expires_in === "number"
+        ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+        : null,
+    connected_at: new Date().toISOString(),
+  };
+}
+
+function redirectWithClearedState(url: string) {
+  const response = NextResponse.redirect(url);
+  response.cookies.delete("coinpay_oauth_state");
+  return response;
 }
 
 export async function GET(request: NextRequest) {
@@ -47,7 +80,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${loginUrl}?error=coinpay_expired`);
     }
 
-    let savedState: { state: string; codeVerifier: string };
+    let savedState: CoinPayOAuthState;
     try {
       savedState = JSON.parse(stateCookie);
     } catch {
@@ -93,6 +126,7 @@ export async function GET(request: NextRequest) {
 
     const userinfo = await userinfoRes.json();
     const { sub, email, name } = userinfo;
+    const identityMetadata = coinpayIdentityMetadata(tokens, userinfo);
 
     if (!email) {
       return NextResponse.redirect(`${loginUrl}?error=coinpay_no_email`);
@@ -100,10 +134,53 @@ export async function GET(request: NextRequest) {
 
     const supabase = getAdminSupabase();
 
+    if (savedState.mode === "connect") {
+      const returnTo = savedState.returnTo?.startsWith("/")
+        ? savedState.returnTo
+        : "/settings/connections";
+      const connectUrl = `${appUrl}${returnTo}`;
+
+      if (!savedState.userId) {
+        return redirectWithClearedState(`${connectUrl}?coinpay=expired`);
+      }
+
+      const { data: existingIdentity } = await supabase
+        .from("oauth_identities")
+        .select("id, user_id")
+        .eq("provider", "coinpay")
+        .eq("provider_user_id", sub)
+        .maybeSingle();
+
+      if (existingIdentity && existingIdentity.user_id !== savedState.userId) {
+        return redirectWithClearedState(`${connectUrl}?coinpay=already_linked`);
+      }
+
+      if (existingIdentity) {
+        await supabase
+          .from("oauth_identities")
+          .update({
+            email,
+            metadata: identityMetadata,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingIdentity.id);
+      } else {
+        await supabase.from("oauth_identities").insert({
+          user_id: savedState.userId,
+          provider: "coinpay",
+          provider_user_id: sub,
+          email,
+          metadata: identityMetadata,
+        });
+      }
+
+      return redirectWithClearedState(`${connectUrl}?coinpay=connected`);
+    }
+
     // Check if this CoinPay identity is already linked
     const { data: existingIdentity } = await supabase
       .from("oauth_identities")
-      .select("user_id")
+      .select("id, user_id")
       .eq("provider", "coinpay")
       .eq("provider_user_id", sub)
       .single();
@@ -113,6 +190,14 @@ export async function GET(request: NextRequest) {
     if (existingIdentity) {
       // Existing linked user
       userId = existingIdentity.user_id;
+      await supabase
+        .from("oauth_identities")
+        .update({
+          email,
+          metadata: identityMetadata,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingIdentity.id);
     } else {
       // Try to create user first; if email exists, look them up
       const randomPassword = randomBytes(32).toString("hex");
@@ -200,7 +285,7 @@ export async function GET(request: NextRequest) {
         provider: "coinpay",
         provider_user_id: sub,
         email,
-        metadata: { name, coinpay_sub: sub },
+        metadata: identityMetadata,
       });
     }
 
@@ -220,9 +305,7 @@ export async function GET(request: NextRequest) {
     const confirmUrl = `${appUrl}/auth/confirm?token_hash=${linkData.properties.hashed_token}&type=magiclink&next=/dashboard`;
 
     // Clear the state cookie
-    const response = NextResponse.redirect(confirmUrl);
-    response.cookies.delete("coinpay_oauth_state");
-    return response;
+    return redirectWithClearedState(confirmUrl);
   } catch (err) {
     console.error("[CoinPay OAuth] Unexpected error:", err);
     return NextResponse.redirect(`${loginUrl}?error=coinpay_error`);

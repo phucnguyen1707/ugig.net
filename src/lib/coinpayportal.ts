@@ -30,13 +30,26 @@ export interface CoinPayWebhookPayload {
 
 export interface CreatePaymentOptions {
   amount_usd: number;
-  currency: "usdc_pol" | "usdc_sol" | "pol" | "sol" | "btc" | "eth" | "usdc_eth" | "usdt";
+  currency:
+    | "usdc_pol"
+    | "usdc_sol"
+    | "usdc_eth"
+    | "usdt"
+    | "usdt_eth"
+    | "usdt_pol"
+    | "usdt_sol"
+    | "pol"
+    | "sol"
+    | "btc"
+    | "bch"
+    | "eth";
   description?: string;
   redirect_url?: string;
   expires_at?: string;
   expires_in?: number;
   metadata?: Record<string, unknown>;
   business_id?: string;
+  merchant_wallet_address?: string;
 }
 
 export interface CreatePaymentResponse {
@@ -85,6 +98,16 @@ export interface BusinessWalletCurrency {
   address: string;
   is_active?: boolean;
   [key: string]: unknown;
+}
+
+export interface CoinPayGlobalWallet {
+  id?: string;
+  currency: SupportedCurrency;
+  cryptocurrency: string;
+  label: string | null;
+  address: string;
+  network: string | null;
+  raw?: Record<string, unknown>;
 }
 
 /**
@@ -166,6 +189,7 @@ export async function createPayment(options: CreatePaymentOptions): Promise<Crea
       expires_at: options.expires_at,
       expires_in: options.expires_in,
       webhook_url: `${appUrl}/api/webhooks/coinpay`,
+      merchant_wallet_address: options.merchant_wallet_address,
       metadata: options.metadata,
     }),
   });
@@ -214,9 +238,13 @@ export const SUPPORTED_CURRENCIES = {
   usdc_sol: { name: "USDC (Solana)", symbol: "USDC" },
   usdc_eth: { name: "USDC (Ethereum)", symbol: "USDC" },
   usdt: { name: "USDT", symbol: "USDT" },
+  usdt_eth: { name: "USDT (Ethereum)", symbol: "USDT" },
+  usdt_pol: { name: "USDT (Polygon)", symbol: "USDT" },
+  usdt_sol: { name: "USDT (Solana)", symbol: "USDT" },
   pol: { name: "Polygon", symbol: "POL" },
   sol: { name: "Solana", symbol: "SOL" },
   btc: { name: "Bitcoin", symbol: "BTC" },
+  bch: { name: "Bitcoin Cash", symbol: "BCH" },
   eth: { name: "Ethereum", symbol: "ETH" },
 } as const;
 
@@ -260,10 +288,16 @@ export function coinToPaymentCurrency(coin: SupportedCoin): SupportedCurrency | 
     normalizeCoinSymbol(coin.blockchain);
 
   if (symbol === "BTC") return "btc";
+  if (symbol === "BCH") return "bch";
   if (symbol === "ETH") return "eth";
   if (symbol === "POL" || symbol === "MATIC") return "pol";
   if (symbol === "SOL") return "sol";
-  if (symbol === "USDT") return "usdt";
+  if (symbol === "USDT") {
+    if (chain === "POL" || chain === "POLYGON" || chain === "MATIC") return "usdt_pol";
+    if (chain === "SOL" || chain === "SOLANA") return "usdt_sol";
+    if (chain === "ETH" || chain === "ETHEREUM") return "usdt_eth";
+    return "usdt";
+  }
   if (symbol === "USDC") {
     if (chain === "POL" || chain === "POLYGON" || chain === "MATIC") return "usdc_pol";
     if (chain === "ETH" || chain === "ETHEREUM") return "usdc_eth";
@@ -283,6 +317,7 @@ export function preferredCoinToPaymentCurrency(
   if (!symbol) return null;
 
   if (symbol === "BTC") return "btc";
+  if (symbol === "BCH") return "bch";
   if (symbol === "ETH") return "eth";
   if (symbol === "POL" || symbol === "MATIC") return "pol";
   if (symbol === "SOL") return "sol";
@@ -377,6 +412,183 @@ function extractWalletCurrenciesFromBusiness(
   }
 
   return [...wallets.values()].filter((wallet) => wallet.is_active !== false);
+}
+
+function arrayFromWalletPayload(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== "object") return [];
+
+  const record = payload as Record<string, unknown>;
+  const candidates = [
+    record.wallets,
+    record.tokens,
+    record.addresses,
+    record.data,
+    record.result,
+    record.business,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+    if (candidate && typeof candidate === "object") {
+      const nested = arrayFromWalletPayload(candidate);
+      if (nested.length > 0) return nested;
+    }
+  }
+
+  return Object.entries(record).map(([key, value]) =>
+    value && typeof value === "object"
+      ? { ...(value as Record<string, unknown>), cryptocurrency: key, currency: key }
+      : { cryptocurrency: key, currency: key, wallet_address: value }
+  );
+}
+
+function normalizeGlobalWallets(payload: unknown): CoinPayGlobalWallet[] {
+  const wallets = new Map<string, CoinPayGlobalWallet>();
+
+  for (const item of arrayFromWalletPayload(payload)) {
+    if (!item || typeof item !== "object") continue;
+
+    const record = item as Record<string, unknown>;
+    const cryptocurrency =
+      getStringValue(record, ["cryptocurrency", "currency", "symbol", "coin", "chain", "network", "id"]) ||
+      "";
+    const address = getStringValue(record, [
+      "wallet_address",
+      "walletAddress",
+      "address",
+      "receiving_address",
+      "receivingAddress",
+      "deposit_address",
+      "depositAddress",
+    ]);
+    const currency = coinToPaymentCurrency(record as SupportedCoin);
+
+    if (!currency || !address) continue;
+    if (record.is_active === false || record.active === false || record.enabled === false) continue;
+    if (!validateCoinpayReceivingAddress(currency, address)) continue;
+
+    const key = `${currency}:${address.toLowerCase()}`;
+    if (wallets.has(key)) continue;
+
+    wallets.set(key, {
+      id: getStringValue(record, ["id", "wallet_id", "walletId"]) || undefined,
+      currency,
+      cryptocurrency: cryptocurrency || currency.toUpperCase(),
+      label: getStringValue(record, ["label", "name"]) || null,
+      address,
+      network: getStringValue(record, ["network", "chain", "blockchain"]) || null,
+      raw: record,
+    });
+  }
+
+  return [...wallets.values()];
+}
+
+export function validateCoinpayReceivingAddress(
+  currency: SupportedCurrency,
+  address: string
+): boolean {
+  const value = address.trim();
+  if (!value) return false;
+
+  if (
+    currency === "eth" ||
+    currency === "pol" ||
+    currency === "usdc_eth" ||
+    currency === "usdc_pol" ||
+    currency === "usdt" ||
+    currency === "usdt_eth" ||
+    currency === "usdt_pol"
+  ) {
+    return /^0x[a-fA-F0-9]{40}$/.test(value);
+  }
+
+  if (currency === "sol" || currency === "usdc_sol" || currency === "usdt_sol") {
+    return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value);
+  }
+
+  if (currency === "btc") {
+    return /^(bc1[a-z0-9]{25,90}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(value);
+  }
+
+  if (currency === "bch") {
+    return /^(bitcoincash:)?[qp][a-z0-9]{41,90}$/.test(value) ||
+      /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(value);
+  }
+
+  return false;
+}
+
+export async function getCoinpayGlobalWalletTokens(
+  options: {
+    business_id?: string;
+    access_token?: string | null;
+  } = {}
+): Promise<CoinPayGlobalWallet[]> {
+  const apiKey = process.env.COINPAY_API_KEY;
+  const businessId = options.business_id || process.env.COINPAY_MERCHANT_ID;
+  const bearerToken = options.access_token || apiKey;
+
+  if (!bearerToken) {
+    throw new Error("CoinPayPortal credentials not configured");
+  }
+
+  const urls = [
+    new URL(`${COINPAY_API_URL}/get-tokens`),
+    new URL(`${COINPAY_API_URL}/wallets`),
+  ];
+  if (businessId) {
+    urls.push(new URL(`${COINPAY_API_URL}/businesses/${businessId}`));
+  }
+  for (const url of urls) {
+    if (businessId && !url.searchParams.has("business_id")) {
+      url.searchParams.set("business_id", businessId);
+    }
+  }
+
+  const errors: string[] = [];
+  let sawSuccessfulResponse = false;
+
+  for (const url of urls) {
+    const response = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${bearerToken}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      errors.push(`${url.pathname}: ${response.status}${text ? ` ${text.slice(0, 120)}` : ""}`);
+      if ([401, 403, 404].includes(response.status)) continue;
+      throw new Error(`CoinPay get-tokens failed: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    sawSuccessfulResponse = true;
+    const wallets = normalizeGlobalWallets(payload);
+    if (wallets.length > 0) return wallets;
+  }
+
+  if (!sawSuccessfulResponse && errors.length > 0) {
+    throw new Error(`CoinPay get-tokens failed: ${errors[0]}`);
+  }
+
+  return [];
+}
+
+export function findCoinpayGlobalWallet(
+  wallets: CoinPayGlobalWallet[],
+  currency: SupportedCurrency,
+  address: string
+): CoinPayGlobalWallet | null {
+  if (!validateCoinpayReceivingAddress(currency, address)) return null;
+  const expected = address.trim().toLowerCase();
+  return (
+    wallets.find((wallet) => wallet.currency === currency && wallet.address.toLowerCase() === expected) ||
+    null
+  );
 }
 
 export async function getBusinessWalletCurrencies(

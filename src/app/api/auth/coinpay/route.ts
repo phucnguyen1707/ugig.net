@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes, createHash } from "crypto";
 import { getAppUrl } from "@/lib/app-url";
+import { getAuthContext } from "@/lib/auth/get-user";
 
 const COINPAY_AUTH_URL = "https://coinpayportal.com/api/oauth/authorize";
 
@@ -20,6 +21,20 @@ export async function GET(request: NextRequest) {
 
   const appUrl = getAppUrl(request, { trustedOnly: true });
   const redirectUri = `${appUrl}/api/callback/oauth`;
+  const { searchParams } = new URL(request.url);
+  const mode = searchParams.get("mode") === "connect" ? "connect" : "login";
+  const requestedRedirect = searchParams.get("redirect");
+  const returnTo =
+    requestedRedirect && requestedRedirect.startsWith("/") ? requestedRedirect : "/settings/connections";
+  let userId: string | null = null;
+
+  if (mode === "connect") {
+    const auth = await getAuthContext(request);
+    if (!auth) {
+      return NextResponse.redirect(`${appUrl}/login?redirect=${encodeURIComponent(returnTo)}`);
+    }
+    userId = auth.user.id;
+  }
 
   // Generate state and PKCE
   const state = base64url(randomBytes(32));
@@ -31,7 +46,7 @@ export async function GET(request: NextRequest) {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "openid profile email",
+    scope: process.env.COINPAY_OAUTH_SCOPE || "openid profile email",
     state,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
@@ -41,7 +56,7 @@ export async function GET(request: NextRequest) {
 
   // Store state + verifier in cookie
   const response = NextResponse.redirect(authUrl);
-  response.cookies.set("coinpay_oauth_state", JSON.stringify({ state, codeVerifier }), {
+  response.cookies.set("coinpay_oauth_state", JSON.stringify({ state, codeVerifier, mode, userId, returnTo }), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

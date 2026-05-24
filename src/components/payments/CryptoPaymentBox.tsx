@@ -12,6 +12,7 @@ interface CryptoPaymentBoxProps {
   paymentCurrency?: string | null;
   expiresAt?: string | null;
   checkoutUrl?: string | null;
+  compact?: boolean;
 }
 
 export function CryptoPaymentBox({
@@ -21,6 +22,7 @@ export function CryptoPaymentBox({
   paymentCurrency,
   expiresAt,
   checkoutUrl,
+  compact = false,
 }: CryptoPaymentBoxProps) {
   const [copied, setCopied] = useState<"address" | "amount" | null>(null);
   const amountLabel =
@@ -33,6 +35,59 @@ export function CryptoPaymentBox({
     setCopied(key);
     window.setTimeout(() => setCopied(null), 1200);
   };
+
+  if (compact) {
+    return (
+      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+        <span className="text-sm font-semibold text-foreground">{title}</span>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-md border border-border bg-background p-3">
+            <span className="text-xs font-medium text-muted-foreground">Coin</span>
+            <code className="mt-1 block break-all text-sm font-semibold">
+              {paymentCurrency || "Crypto"}
+            </code>
+          </div>
+          <div className="rounded-md border border-border bg-background p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Amount</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 px-2 text-xs"
+                onClick={() => copy(String(amountCrypto ?? ""), "amount")}
+                disabled={amountCrypto == null || amountCrypto === ""}
+              >
+                <Copy className="h-3 w-3" />
+                {copied === "amount" ? "Copied" : "Copy"}
+              </Button>
+            </div>
+            <code className="mt-1 block break-all text-sm font-semibold">
+              {amountLabel || "Pending quote"}
+            </code>
+          </div>
+          <div className="rounded-md border border-border bg-background p-3 sm:col-span-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Receiving address</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 px-2 text-xs"
+                onClick={() => copy(paymentAddress, "address")}
+              >
+                <Copy className="h-3 w-3" />
+                {copied === "address" ? "Copied" : "Copy"}
+              </Button>
+            </div>
+            <code className="mt-1 block break-all text-xs leading-relaxed">
+              {paymentAddress}
+            </code>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-4 sm:p-5 space-y-4">

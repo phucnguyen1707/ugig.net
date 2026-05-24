@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Loader2, CheckCircle2, Clock, DollarSign, Send } from "lucide-react";
 import { CryptoPaymentBox } from "@/components/payments/CryptoPaymentBox";
+import { InvoicePaymentRequestControls, type InvoicePaymentRequestData } from "@/components/payments/InvoicePaymentRequestControls";
 
 interface GigInvoice {
   id: string;
@@ -48,7 +49,6 @@ export function InvoiceButton({
   const [showForm, setShowForm] = useState(false);
   const [invoices, setInvoices] = useState<GigInvoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
   const [amount, setAmount] = useState(budgetAmount?.toString() || "");
   const [notes, setNotes] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -128,44 +128,25 @@ export function InvoiceButton({
     }
   };
 
-  const handleCreatePaymentRequest = async (invoiceId: string) => {
-    setPayingInvoiceId(invoiceId);
+  const handlePaymentCreated = (invoiceId: string, data: InvoicePaymentRequestData) => {
     setError(null);
-
-    try {
-      const response = await fetch(`/api/gigs/${gigId}/invoice/${invoiceId}/payment-request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const result = await response.json();
-
-      if (!response.ok) {
-        setError(result.error || "Failed to create payment request");
-        return;
-      }
-
-      setInvoices((prev) =>
-        prev.map((inv) =>
-          inv.id === invoiceId
-            ? {
-                ...inv,
-                status: "sent",
-                pay_url: result.data?.pay_url || null,
-                metadata: result.data?.metadata || {
-                  payment_address: result.data?.payment_address,
-                  amount_crypto: result.data?.amount_crypto,
-                  payment_currency: result.data?.payment_currency,
-                  expires_at: result.data?.expires_at,
-                },
-              }
-            : inv
-        )
-      );
-    } catch {
-      setError("An error occurred. Please try again.");
-    } finally {
-      setPayingInvoiceId(null);
-    }
+    setInvoices((prev) =>
+      prev.map((inv) =>
+        inv.id === invoiceId
+          ? {
+              ...inv,
+              status: "sent",
+              pay_url: data.pay_url || null,
+              metadata: (data.metadata as GigInvoice["metadata"]) || {
+                payment_address: data.payment_address,
+                amount_crypto: data.amount_crypto,
+                payment_currency: data.payment_currency,
+                expires_at: data.expires_at,
+              },
+            }
+          : inv
+      )
+    );
   };
 
   const statusBadge = (status: string) => {
@@ -239,7 +220,7 @@ export function InvoiceButton({
                 amountCrypto={inv.metadata.amount_crypto}
                 paymentCurrency={inv.metadata.payment_currency}
                 expiresAt={inv.metadata.expires_at}
-                checkoutUrl={inv.pay_url || inv.metadata.checkout_url || undefined}
+                compact
               />
             )}
 
@@ -249,19 +230,11 @@ export function InvoiceButton({
                   Pay when you are ready. The crypto amount will be quoted at the current market rate.
                 </p>
                 {error && <p className="text-sm text-destructive">{error}</p>}
-                <Button
-                  size="sm"
-                  onClick={() => handleCreatePaymentRequest(inv.id)}
-                  disabled={payingInvoiceId === inv.id}
-                  className="gap-2"
-                >
-                  {payingInvoiceId === inv.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <DollarSign className="h-4 w-4" />
-                  )}
-                  Pay now
-                </Button>
+                <InvoicePaymentRequestControls
+                  gigId={gigId}
+                  invoiceId={inv.id}
+                  onCreated={(data) => handlePaymentCreated(inv.id, data)}
+                />
               </div>
             )}
 

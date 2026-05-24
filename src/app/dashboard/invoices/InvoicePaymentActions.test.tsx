@@ -47,24 +47,42 @@ describe("InvoicePaymentActions", () => {
 
     expect(screen.getByText("Invoice payment")).toBeInTheDocument();
     expect(screen.getByText("0.25 SOL")).toBeInTheDocument();
-    expect(screen.getAllByText("SolAddress123")).toHaveLength(2);
+    expect(screen.getByText("SolAddress123")).toBeInTheDocument();
   });
 
   it("creates a fresh payment request for an expired payment window", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        data: {
-          pay_url: null,
-          metadata: {
-            payment_address: "NewSolAddress456",
-            amount_crypto: "0.5",
-            payment_currency: "SOL",
-            expires_at: "2030-01-01T00:00:00Z",
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            wallets: [
+              {
+                currency: "sol",
+                cryptocurrency: "SOL",
+                label: "Solana wallet",
+                address: "So11111111111111111111111111111111111111112",
+              },
+            ],
+            setup_required: false,
+            setup_instructions: [],
           },
-        },
-      }),
-    });
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            pay_url: null,
+            metadata: {
+              payment_address: "NewSolAddress456",
+              amount_crypto: "0.5",
+              payment_currency: "SOL",
+              expires_at: "2030-01-01T00:00:00Z",
+            },
+          },
+        }),
+      });
 
     render(
       <InvoicePaymentActions
@@ -78,7 +96,7 @@ describe("InvoicePaymentActions", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /pay now/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /pay now/i }));
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
@@ -86,31 +104,53 @@ describe("InvoicePaymentActions", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currency: "sol",
+            address: "So11111111111111111111111111111111111111112",
+          }),
         }
       );
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText("NewSolAddress456")).toHaveLength(2);
+      expect(screen.getByText("NewSolAddress456")).toBeInTheDocument();
     });
     expect(screen.getByText("0.5 SOL")).toBeInTheDocument();
   });
 
   it("can create a payment request when payment details are missing", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        data: {
-          pay_url: null,
-          metadata: {
-            payment_address: "NewSolAddress456",
-            amount_crypto: "0.5",
-            payment_currency: "SOL",
-            expires_at: "2030-01-01T00:00:00Z",
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            wallets: [
+              {
+                currency: "sol",
+                cryptocurrency: "SOL",
+                label: "Solana wallet",
+                address: "So11111111111111111111111111111111111111112",
+              },
+            ],
+            setup_required: false,
+            setup_instructions: [],
           },
-        },
-      }),
-    });
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            pay_url: null,
+            metadata: {
+              payment_address: "NewSolAddress456",
+              amount_crypto: "0.5",
+              payment_currency: "SOL",
+              expires_at: "2030-01-01T00:00:00Z",
+            },
+          },
+        }),
+      });
 
     render(
       <InvoicePaymentActions
@@ -120,17 +160,21 @@ describe("InvoicePaymentActions", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /pay now/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /pay now/i }));
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith("/api/gigs/gig-1/invoice/inv-1/payment-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currency: "sol",
+          address: "So11111111111111111111111111111111111111112",
+        }),
       });
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText("NewSolAddress456")).toHaveLength(2);
+      expect(screen.getByText("NewSolAddress456")).toBeInTheDocument();
     });
     expect(screen.getByText("0.5 SOL")).toBeInTheDocument();
   });

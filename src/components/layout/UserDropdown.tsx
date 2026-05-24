@@ -14,6 +14,7 @@ import {
   Bell,
   Zap,
   Mail,
+  Link as LinkIcon,
 } from "lucide-react";
 
 interface UserDropdownProps {
@@ -146,6 +147,14 @@ export function UserDropdown({ username, fullName, avatarUrl }: UserDropdownProp
             >
               <Zap className="h-4 w-4 text-amber-500" />
               Wallet
+            </Link>
+            <Link
+              href="/settings/connections"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-muted/50 transition-colors cursor-pointer"
+            >
+              <LinkIcon className="h-4 w-4" />
+              OAuth Connections
             </Link>
             <Link
               href="/dashboard/zaps"
