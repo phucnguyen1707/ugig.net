@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CryptoPaymentBox } from "@/components/payments/CryptoPaymentBox";
-import { InvoicePaymentRequestControls, type InvoicePaymentRequestData } from "@/components/payments/InvoicePaymentRequestControls";
 import { CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 
 type InvoiceStatus = "draft" | "sent" | "paid" | "cancelled" | "expired";
@@ -41,6 +40,7 @@ export function InvoicePaymentActions({
   const [status, setStatus] = useState<InvoiceStatus>(initialStatus);
   const [payUrl, setPayUrl] = useState(initialPayUrl);
   const [metadata, setMetadata] = useState<InvoicePaymentMetadata | null>(initialMetadata);
+  const [submitting, setSubmitting] = useState(false);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -57,10 +57,9 @@ export function InvoicePaymentActions({
       }
 
       try {
-        const res = await fetch(
-          `/api/gigs/${gigId}/invoice/${invoiceId}/payment-status`,
-          { cache: "no-store" }
-        );
+        const res = await fetch(`/api/gigs/${gigId}/invoice/${invoiceId}/payment-status`, {
+          cache: "no-store",
+        });
         const json = await res.json();
 
         if (!res.ok) {
@@ -101,20 +100,41 @@ export function InvoicePaymentActions({
     return () => window.clearInterval(interval);
   }, [checkPaymentStatus, paymentAddress, status]);
 
-  const handlePaymentCreated = (data: InvoicePaymentRequestData) => {
-    const nextMetadata = (data.metadata as InvoicePaymentMetadata | null) || {
-      payment_address: data.payment_address || null,
-      amount_crypto: data.amount_crypto || null,
-      payment_currency: data.payment_currency || null,
-      checkout_url: data.pay_url || null,
-      expires_at: data.expires_at || null,
-    };
-
+  const createPaymentRequest = async () => {
+    setSubmitting(true);
     setError(null);
-    setStatus("sent");
-    setPayUrl(data.pay_url || null);
-    setMetadata(nextMetadata);
-    router.refresh();
+    setStatusMessage(null);
+
+    try {
+      const res = await fetch(`/api/gigs/${gigId}/invoice/${invoiceId}/payment-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(json.error || "Failed to create payment request");
+        return;
+      }
+
+      const nextMetadata = json.data?.metadata || {
+        payment_address: json.data?.payment_address || null,
+        amount_crypto: json.data?.amount_crypto || null,
+        payment_currency: json.data?.payment_currency || null,
+        checkout_url: json.data?.pay_url || null,
+        expires_at: json.data?.expires_at || null,
+      };
+
+      setStatus("sent");
+      setPayUrl(json.data?.pay_url || null);
+      setMetadata(nextMetadata);
+      setStatusMessage("Payment request created at the current market rate.");
+      router.refresh();
+    } catch {
+      setError("Network error. Try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (status === "paid") {
@@ -180,12 +200,20 @@ export function InvoicePaymentActions({
       </p>
       {statusMessage && <p className="text-sm text-green-700">{statusMessage}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <InvoicePaymentRequestControls
-        gigId={gigId}
-        invoiceId={invoiceId}
-        onCreated={handlePaymentCreated}
-        onStatusMessage={setStatusMessage}
-      />
+      <Button
+        type="button"
+        size="sm"
+        onClick={createPaymentRequest}
+        disabled={submitting}
+        className="gap-2"
+      >
+        {submitting ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <RefreshCw className="h-4 w-4" />
+        )}
+        Pay now
+      </Button>
     </div>
   );
 }

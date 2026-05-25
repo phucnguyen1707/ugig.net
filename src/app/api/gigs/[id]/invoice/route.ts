@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient, getAuthContext } from "@/lib/auth/get-user";
+import { getConnectedCoinpayAccessToken } from "@/lib/coinpay-oauth";
+import {
+  findCoinpayGlobalWallet,
+  getCoinpayGlobalWalletTokens,
+  preferredCoinToPaymentCurrency,
+} from "@/lib/coinpayportal";
 import { invoiceReceivedEmail, sendEmail } from "@/lib/email";
 import { z } from "zod";
 
@@ -7,15 +13,21 @@ const createInvoiceSchema = z.object({
   application_id: z.string().uuid(),
   amount: z.number().positive("Amount must be positive"),
   currency: z.string().default("USD"),
+  payment_currency: z.string().optional(),
+  merchant_wallet_address: z.string().optional(),
   notes: z.string().optional(),
   due_date: z.string().optional(),
 });
 
+const COINPAY_WALLET_SETUP_INSTRUCTIONS = [
+  "Connect your CoinPay account from OAuth Connections.",
+  "Open CoinPayPortal and create or unlock your web wallet.",
+  "Copy the receiving address for each coin you want to use.",
+  "Paste those addresses into Settings > Global Wallet Addresses in CoinPay, then refresh the invoice form.",
+];
+
 // GET /api/gigs/[id]/invoice - Get invoices for a gig
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: gigId } = await params;
     const auth = await getAuthContext(request);
@@ -27,11 +39,13 @@ export async function GET(
     // Get invoices where user is worker or poster
     const { data: invoices, error } = await (supabase as any)
       .from("gig_invoices")
-      .select(`
+      .select(
+        `
         *,
         worker:profiles!worker_id(id, username, full_name, avatar_url),
         poster:profiles!poster_id(id, username, full_name, avatar_url)
-      `)
+      `
+      )
       .eq("gig_id", gigId)
       .or(`worker_id.eq.${user.id},poster_id.eq.${user.id}`)
       .order("created_at", { ascending: false });
@@ -42,18 +56,12 @@ export async function GET(
 
     return NextResponse.json({ data: invoices || [] });
   } catch {
-    return NextResponse.json(
-      { error: "An unexpected error occurred" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
   }
 }
 
 // POST /api/gigs/[id]/invoice - Create invoice for an accepted application
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: gigId } = await params;
     const auth = await getAuthContext(request);
@@ -71,7 +79,15 @@ export async function POST(
       );
     }
 
-    const { application_id, amount, currency, notes, due_date } = validationResult.data;
+    const {
+      application_id,
+      amount,
+      currency,
+      payment_currency,
+      merchant_wallet_address,
+      notes,
+      due_date,
+    } = validationResult.data;
 
     // Get gig
     const { data: gig } = await supabase
@@ -94,10 +110,7 @@ export async function POST(
       .single();
 
     if (!application) {
-      return NextResponse.json(
-        { error: "Application not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Application not found" }, { status: 404 });
     }
 
     const isWorker = application.applicant_id === user.id;
@@ -142,12 +155,65 @@ export async function POST(
             pay_url: openInvoice.pay_url,
             payment_address: metadata.payment_address || null,
             amount_crypto: metadata.amount_crypto || null,
-            payment_currency: metadata.payment_currency || null,
+            payment_currency:
+              metadata.payment_currency || metadata.receiver_payment_currency || null,
             expires_at: metadata.expires_at || null,
             metadata: openInvoice.metadata,
           },
         },
         { status: 200 }
+      );
+    }
+
+    const selectedCurrency = preferredCoinToPaymentCurrency(payment_currency || null);
+    const selectedAddress = merchant_wallet_address?.trim() || "";
+
+    if (!selectedCurrency || !selectedAddress) {
+      return NextResponse.json(
+        { error: "Select a CoinPay receiving wallet before sending the invoice" },
+        { status: 400 }
+      );
+    }
+
+    const workerCoinpayToken = await getConnectedCoinpayAccessToken(workerId);
+    if (!workerCoinpayToken) {
+      return NextResponse.json(
+        {
+          error: isWorker
+            ? "Connect your CoinPay account before sending an invoice"
+            : "The worker must connect CoinPay before this invoice can be created",
+          oauth_required: isWorker,
+          setup_required: true,
+          setup_instructions: COINPAY_WALLET_SETUP_INSTRUCTIONS,
+        },
+        { status: 409 }
+      );
+    }
+
+    const workerWallets = await getCoinpayGlobalWalletTokens({ access_token: workerCoinpayToken });
+    if (workerWallets.length === 0) {
+      return NextResponse.json(
+        {
+          error: isWorker
+            ? "Add CoinPay global wallet addresses before sending an invoice"
+            : "The worker must add CoinPay global wallet addresses before this invoice can be created",
+          oauth_required: false,
+          setup_required: true,
+          setup_instructions: COINPAY_WALLET_SETUP_INSTRUCTIONS,
+        },
+        { status: 409 }
+      );
+    }
+
+    const selectedWallet = findCoinpayGlobalWallet(
+      workerWallets,
+      selectedCurrency,
+      selectedAddress
+    );
+    if (!selectedWallet) {
+      return NextResponse.json(
+        { error: "Selected receiving address is not a valid CoinPay wallet for that coin" },
+        { status: 400 }
       );
     }
 
@@ -168,6 +234,9 @@ export async function POST(
         metadata: {
           invoice_currency: currency,
           initiated_by: isPoster ? "poster" : "worker",
+          receiver_payment_currency: selectedWallet.currency,
+          merchant_wallet_address: selectedWallet.address,
+          merchant_wallet_label: selectedWallet.label,
         },
       })
       .select()
@@ -175,10 +244,7 @@ export async function POST(
 
     if (error) {
       console.error("Failed to create invoice record:", error);
-      return NextResponse.json(
-        { error: "Failed to create invoice" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to create invoice" }, { status: 500 });
     }
 
     // Notify the counterparty
@@ -235,18 +301,21 @@ export async function POST(
       }
     }
 
-    return NextResponse.json({
-      data: {
-        invoice_id: invoice.id,
-        coinpay_invoice_id: null,
-        pay_url: null,
-        payment_address: null,
-        amount_crypto: null,
-        payment_currency: null,
-        expires_at: null,
-        metadata: invoice.metadata,
+    return NextResponse.json(
+      {
+        data: {
+          invoice_id: invoice.id,
+          coinpay_invoice_id: null,
+          pay_url: null,
+          payment_address: null,
+          amount_crypto: null,
+          payment_currency: selectedWallet.currency,
+          expires_at: null,
+          metadata: invoice.metadata,
+        },
       },
-    }, { status: 201 });
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Invoice creation error:", error);
     return NextResponse.json(

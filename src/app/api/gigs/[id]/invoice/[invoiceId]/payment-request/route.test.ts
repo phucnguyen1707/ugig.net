@@ -2,10 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/coinpayportal", () => ({
   createPayment: vi.fn(),
-  findCoinpayGlobalWallet: vi.fn((wallets, currency, address) =>
-    wallets.find((wallet: any) => wallet.currency === currency && wallet.address === address) || null
-  ),
-  getCoinpayGlobalWalletTokens: vi.fn(),
   preferredCoinToPaymentCurrency: vi.fn((value: string | null) => value?.toLowerCase() || null),
 }));
 
@@ -18,7 +14,7 @@ vi.mock("@/lib/supabase/service", () => ({
 }));
 
 import { GET, POST } from "./route";
-import { createPayment, getCoinpayGlobalWalletTokens } from "@/lib/coinpayportal";
+import { createPayment } from "@/lib/coinpayportal";
 import { getAuthContext } from "@/lib/auth/get-user";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -27,6 +23,7 @@ const INVOICE_ID = "f53e4a56-3cf7-42f9-9a33-bc1cb770c4f6";
 const APP_ID = "d2317730-c56a-49e9-a6e4-dc469b7605f7";
 const POSTER_ID = "4f16c625-c37a-4654-82db-e391067cbb13";
 const WORKER_ID = "666cbaba-c6ea-4756-ad44-d6a5b4248f8f";
+const WALLET_ADDRESS = "So11111111111111111111111111111111111111112";
 
 const params = { params: Promise.resolve({ id: GIG_ID, invoiceId: INVOICE_ID }) };
 
@@ -53,52 +50,46 @@ function updateQuery(updated: any, onUpdate?: (row: any) => void) {
   };
 }
 
-function coinpayIdentityQuery(accessToken: string | null = "coinpay-access-token") {
+function serviceClient(updated: any, onUpdate?: (row: any) => void) {
   return {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    maybeSingle: vi.fn().mockResolvedValue({
-      data: accessToken ? { metadata: { access_token: accessToken } } : null,
-      error: null,
-    }),
+    from: vi.fn(() => updateQuery(updated, onUpdate)),
   };
 }
 
-function serviceClient(updated: any, onUpdate?: (row: any) => void, accessToken: string | null = "coinpay-access-token") {
+function payableInvoice(metadata: Record<string, unknown> = {}) {
   return {
-    from: vi.fn((table: string) =>
-      table === "oauth_identities"
-        ? coinpayIdentityQuery(accessToken)
-        : updateQuery(updated, onUpdate)
-    ),
+    id: INVOICE_ID,
+    gig_id: GIG_ID,
+    application_id: APP_ID,
+    worker_id: WORKER_ID,
+    poster_id: POSTER_ID,
+    amount_usd: 125,
+    currency: "USD",
+    status: "sent",
+    coinpay_invoice_id: null,
+    pay_url: null,
+    notes: "Milestone 1",
+    metadata,
+    gig: { id: GIG_ID, title: "Build thing", payment_coin: "SOL" },
   };
 }
 
 describe("POST /api/gigs/[id]/invoice/[invoiceId]/payment-request", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("creates a short-lived CoinPay request at pay time", async () => {
-    const invoice = {
-      id: INVOICE_ID,
-      gig_id: GIG_ID,
-      application_id: APP_ID,
-      worker_id: WORKER_ID,
-      poster_id: POSTER_ID,
-      amount_usd: 125,
-      currency: "USD",
-      status: "sent",
-      coinpay_invoice_id: null,
-      pay_url: null,
-      notes: "Milestone 1",
-      metadata: {},
-      gig: { id: GIG_ID, title: "Build thing", payment_coin: "SOL" },
-    };
+  it("creates a short-lived CoinPay request from the worker's stored receiving wallet", async () => {
+    const invoice = payableInvoice({
+      receiver_payment_currency: "sol",
+      merchant_wallet_address: WALLET_ADDRESS,
+      merchant_wallet_label: "Solana wallet",
+    });
     const updated = {
       id: INVOICE_ID,
       metadata: {
-        payment_address: "So11111111111111111111111111111111111111112",
+        receiver_payment_currency: "sol",
+        merchant_wallet_address: WALLET_ADDRESS,
+        merchant_wallet_label: "Solana wallet",
+        payment_address: WALLET_ADDRESS,
         amount_crypto: "0.42",
         payment_currency: "sol",
         expires_at: "2030-01-01T00:00:00Z",
@@ -118,48 +109,31 @@ describe("POST /api/gigs/[id]/invoice/[invoiceId]/payment-request", () => {
       supabase: authSupabase,
     });
     (createServiceClient as any).mockReturnValue(serviceSupabase);
-    (getCoinpayGlobalWalletTokens as any).mockResolvedValue([
-      {
-        currency: "sol",
-        cryptocurrency: "SOL",
-        label: "Solana wallet",
-        address: "So11111111111111111111111111111111111111112",
-        network: "SOL",
-      },
-    ]);
     (createPayment as any).mockResolvedValue({
       payment_id: "cp-pay-now",
-      address: "So11111111111111111111111111111111111111112",
+      address: WALLET_ADDRESS,
       amount_crypto: "0.42",
       currency: "sol",
       expires_at: "2030-01-01T00:00:00Z",
       payment: { id: "cp-pay-now" },
     });
 
-    const res = await POST(
-      {
-        json: async () => ({
-          currency: "sol",
-          address: "So11111111111111111111111111111111111111112",
-        }),
-      } as any,
-      params
-    );
+    const res = await POST({} as any, params);
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.coinpay_invoice_id).toBe("cp-pay-now");
-    expect(body.data.payment_address).toBe("So11111111111111111111111111111111111111112");
+    expect(body.data.payment_address).toBe(WALLET_ADDRESS);
     expect(createPayment).toHaveBeenCalledWith(
       expect.objectContaining({
         amount_usd: 125,
         currency: "sol",
-        merchant_wallet_address: "So11111111111111111111111111111111111111112",
+        merchant_wallet_address: WALLET_ADDRESS,
         expires_in: 900,
         metadata: expect.objectContaining({
           type: "gig_invoice",
           invoice_id: INVOICE_ID,
-          merchant_wallet_address: "So11111111111111111111111111111111111111112",
+          merchant_wallet_address: WALLET_ADDRESS,
         }),
       })
     );
@@ -168,88 +142,50 @@ describe("POST /api/gigs/[id]/invoice/[invoiceId]/payment-request", () => {
       coinpay_invoice_id: "cp-pay-now",
       pay_url: null,
       metadata: expect.objectContaining({
-        payment_address: "So11111111111111111111111111111111111111112",
+        payment_address: WALLET_ADDRESS,
         amount_crypto: "0.42",
         payment_currency: "sol",
-        merchant_wallet_address: "So11111111111111111111111111111111111111112",
+        receiver_payment_currency: "sol",
+        merchant_wallet_address: WALLET_ADDRESS,
       }),
     });
   });
 
-  it("prompts setup when CoinPay global wallets are empty", async () => {
-    const invoice = {
-      id: INVOICE_ID,
-      gig_id: GIG_ID,
-      application_id: APP_ID,
-      worker_id: WORKER_ID,
-      poster_id: POSTER_ID,
-      amount_usd: 125,
-      currency: "USD",
-      status: "sent",
-      coinpay_invoice_id: null,
-      pay_url: null,
-      notes: null,
-      metadata: {},
-      gig: { id: GIG_ID, title: "Build thing", payment_coin: "SOL" },
-    };
-
+  it("rejects payment when the invoice is missing the worker receiving wallet", async () => {
     (getAuthContext as any).mockResolvedValue({
       user: { id: POSTER_ID },
-      supabase: { from: vi.fn(() => invoiceQuery(invoice)) },
+      supabase: { from: vi.fn(() => invoiceQuery(payableInvoice())) },
     });
     (createServiceClient as any).mockReturnValue(serviceClient({ id: INVOICE_ID }));
-    (getCoinpayGlobalWalletTokens as any).mockResolvedValue([]);
 
-    const res = await POST(
-      { json: async () => ({ currency: "sol", address: "So11111111111111111111111111111111111111112" }) } as any,
-      params
-    );
+    const res = await POST({} as any, params);
 
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.setup_required).toBe(true);
-    expect(body.setup_instructions).toEqual(expect.arrayContaining([expect.stringContaining("CoinPayPortal")]));
+    expect(body.error).toBe("This invoice is missing the worker's CoinPay receiving wallet");
     expect(createPayment).not.toHaveBeenCalled();
   });
 
-  it("returns wallet options for the poster", async () => {
-    const invoice = {
-      id: INVOICE_ID,
-      gig_id: GIG_ID,
-      application_id: APP_ID,
-      worker_id: WORKER_ID,
-      poster_id: POSTER_ID,
-      amount_usd: 125,
-      currency: "USD",
-      status: "sent",
-      coinpay_invoice_id: null,
-      pay_url: null,
-      notes: null,
-      metadata: {},
-      gig: { id: GIG_ID, title: "Build thing", payment_coin: "SOL" },
-    };
-    const wallets = [
-      {
-        currency: "sol",
-        cryptocurrency: "SOL",
-        label: "Solana wallet",
-        address: "So11111111111111111111111111111111111111112",
-        network: "SOL",
-      },
-    ];
+  it("returns the invoice receiving wallet metadata", async () => {
+    const invoice = payableInvoice({
+      receiver_payment_currency: "sol",
+      merchant_wallet_address: WALLET_ADDRESS,
+      merchant_wallet_label: "Solana wallet",
+    });
 
     (getAuthContext as any).mockResolvedValue({
       user: { id: POSTER_ID },
       supabase: { from: vi.fn(() => invoiceQuery(invoice)) },
     });
-    (createServiceClient as any).mockReturnValue(serviceClient({ id: INVOICE_ID }));
-    (getCoinpayGlobalWalletTokens as any).mockResolvedValue(wallets);
 
     const res = await GET({} as any, params);
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data.wallets).toEqual(wallets);
-    expect(body.data.setup_required).toBe(false);
+    expect(body.data).toEqual({
+      receiver_payment_currency: "sol",
+      merchant_wallet_address: WALLET_ADDRESS,
+      merchant_wallet_label: "Solana wallet",
+    });
   });
 });

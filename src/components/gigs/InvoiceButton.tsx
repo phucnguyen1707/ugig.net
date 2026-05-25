@@ -1,11 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Loader2, CheckCircle2, Clock, DollarSign, Send } from "lucide-react";
+import {
+  FileText,
+  Loader2,
+  CheckCircle2,
+  Clock,
+  DollarSign,
+  Send,
+  Link as LinkIcon,
+  RefreshCw,
+} from "lucide-react";
 import { CryptoPaymentBox } from "@/components/payments/CryptoPaymentBox";
-import { InvoicePaymentRequestControls, type InvoicePaymentRequestData } from "@/components/payments/InvoicePaymentRequestControls";
+
+interface CoinPayWalletOption {
+  currency: string;
+  cryptocurrency?: string | null;
+  label?: string | null;
+  address: string;
+}
+
+const shortAddress = (value: string) =>
+  value.length > 18 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value;
+
+function walletKey(wallet: CoinPayWalletOption) {
+  return `${wallet.currency}:${wallet.address}`;
+}
+
+function walletLabel(wallet: CoinPayWalletOption) {
+  const coin = wallet.cryptocurrency || wallet.currency;
+  const label = wallet.label ? `${wallet.label} - ` : "";
+  return `${label}${coin.toUpperCase()} (${shortAddress(wallet.address)})`;
+}
 
 interface GigInvoice {
   id: string;
@@ -20,6 +49,9 @@ interface GigInvoice {
     payment_address?: string | null;
     amount_crypto?: number | string | null;
     payment_currency?: string | null;
+    receiver_payment_currency?: string | null;
+    merchant_wallet_address?: string | null;
+    merchant_wallet_label?: string | null;
     checkout_url?: string | null;
     expires_at?: string | null;
   } | null;
@@ -49,6 +81,13 @@ export function InvoiceButton({
   const [showForm, setShowForm] = useState(false);
   const [invoices, setInvoices] = useState<GigInvoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
+  const [wallets, setWallets] = useState<CoinPayWalletOption[]>([]);
+  const [selectedWalletKey, setSelectedWalletKey] = useState("");
+  const [walletsLoading, setWalletsLoading] = useState(false);
+  const [walletsLoaded, setWalletsLoaded] = useState(false);
+  const [oauthRequired, setOauthRequired] = useState(false);
+  const [walletInstructions, setWalletInstructions] = useState<string[]>([]);
   const [amount, setAmount] = useState(budgetAmount?.toString() || "");
   const [notes, setNotes] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -68,6 +107,38 @@ export function InvoiceButton({
       .finally(() => setLoading(false));
   }, [gigId, applicationId]);
 
+  const loadCoinpayWallets = useCallback(async () => {
+    setWalletsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/coinpay/wallets", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "Failed to load CoinPay wallets");
+        return;
+      }
+      const nextWallets = Array.isArray(result.data?.wallets) ? result.data.wallets : [];
+      setWallets(nextWallets);
+      setSelectedWalletKey(nextWallets[0] ? walletKey(nextWallets[0]) : "");
+      setOauthRequired(Boolean(result.data?.oauth_required));
+      setWalletInstructions(
+        Array.isArray(result.data?.setup_instructions) ? result.data.setup_instructions : []
+      );
+      setWalletsLoaded(true);
+    } catch {
+      setError("Failed to load CoinPay wallets");
+    } finally {
+      setWalletsLoaded(true);
+      setWalletsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showForm && isWorker && !walletsLoaded && !walletsLoading) {
+      void loadCoinpayWallets();
+    }
+  }, [loadCoinpayWallets, showForm, isWorker, walletsLoaded, walletsLoading]);
+
   const handleCreateInvoice = async () => {
     const parsedAmount = parseFloat(amount);
     if (!parsedAmount || parsedAmount <= 0) {
@@ -77,6 +148,13 @@ export function InvoiceButton({
 
     setIsCreating(true);
     setError(null);
+    const selectedWallet =
+      wallets.find((wallet) => walletKey(wallet) === selectedWalletKey) || null;
+    if (!selectedWallet) {
+      setError("Select a CoinPay receiving wallet");
+      setIsCreating(false);
+      return;
+    }
 
     try {
       const response = await fetch(`/api/gigs/${gigId}/invoice`, {
@@ -86,6 +164,8 @@ export function InvoiceButton({
           application_id: applicationId,
           amount: parsedAmount,
           currency: "USD",
+          payment_currency: selectedWallet.currency,
+          merchant_wallet_address: selectedWallet.address,
           notes: notes || undefined,
           due_date: dueDate || undefined,
         }),
@@ -113,6 +193,9 @@ export function InvoiceButton({
             payment_address: result.data.payment_address,
             amount_crypto: result.data.amount_crypto,
             payment_currency: result.data.payment_currency,
+            receiver_payment_currency: result.data.metadata?.receiver_payment_currency,
+            merchant_wallet_address: result.data.metadata?.merchant_wallet_address,
+            merchant_wallet_label: result.data.metadata?.merchant_wallet_label,
             expires_at: result.data.expires_at,
           },
         },
@@ -128,25 +211,44 @@ export function InvoiceButton({
     }
   };
 
-  const handlePaymentCreated = (invoiceId: string, data: InvoicePaymentRequestData) => {
+  const handleCreatePaymentRequest = async (invoiceId: string) => {
+    setPayingInvoiceId(invoiceId);
     setError(null);
-    setInvoices((prev) =>
-      prev.map((inv) =>
-        inv.id === invoiceId
-          ? {
-              ...inv,
-              status: "sent",
-              pay_url: data.pay_url || null,
-              metadata: (data.metadata as GigInvoice["metadata"]) || {
-                payment_address: data.payment_address,
-                amount_crypto: data.amount_crypto,
-                payment_currency: data.payment_currency,
-                expires_at: data.expires_at,
-              },
-            }
-          : inv
-      )
-    );
+
+    try {
+      const response = await fetch(`/api/gigs/${gigId}/invoice/${invoiceId}/payment-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Failed to create payment request");
+        return;
+      }
+
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.id === invoiceId
+            ? {
+                ...inv,
+                status: "sent",
+                pay_url: result.data?.pay_url || null,
+                metadata: result.data?.metadata || {
+                  payment_address: result.data?.payment_address,
+                  amount_crypto: result.data?.amount_crypto,
+                  payment_currency: result.data?.payment_currency,
+                  expires_at: result.data?.expires_at,
+                },
+              }
+            : inv
+        )
+      );
+    } catch {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setPayingInvoiceId(null);
+    }
   };
 
   const statusBadge = (status: string) => {
@@ -224,19 +326,30 @@ export function InvoiceButton({
               />
             )}
 
-            {isPoster && (inv.status === "expired" || (inv.status === "sent" && !inv.metadata?.payment_address)) && (
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Pay when you are ready. The crypto amount will be quoted at the current market rate.
-                </p>
-                {error && <p className="text-sm text-destructive">{error}</p>}
-                <InvoicePaymentRequestControls
-                  gigId={gigId}
-                  invoiceId={inv.id}
-                  onCreated={(data) => handlePaymentCreated(inv.id, data)}
-                />
-              </div>
-            )}
+            {isPoster &&
+              (inv.status === "expired" ||
+                (inv.status === "sent" && !inv.metadata?.payment_address)) && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Pay when you are ready. The crypto amount will be quoted for the worker-selected
+                    CoinPay wallet.
+                  </p>
+                  {error && <p className="text-sm text-destructive">{error}</p>}
+                  <Button
+                    size="sm"
+                    onClick={() => handleCreatePaymentRequest(inv.id)}
+                    disabled={payingInvoiceId === inv.id}
+                    className="gap-2"
+                  >
+                    {payingInvoiceId === inv.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <DollarSign className="h-4 w-4" />
+                    )}
+                    Pay now
+                  </Button>
+                </div>
+              )}
 
             {/* Worker: show pay link status */}
             {isWorker && inv.status === "sent" && (
@@ -267,6 +380,13 @@ export function InvoiceButton({
             setDueDate={setDueDate}
             error={error}
             isCreating={isCreating}
+            wallets={wallets}
+            selectedWalletKey={selectedWalletKey}
+            setSelectedWalletKey={setSelectedWalletKey}
+            walletsLoading={walletsLoading}
+            oauthRequired={oauthRequired}
+            walletInstructions={walletInstructions}
+            onRefreshWallets={loadCoinpayWallets}
             onSubmit={handleCreateInvoice}
             onCancel={() => {
               setShowForm(false);
@@ -291,6 +411,13 @@ export function InvoiceButton({
           setDueDate={setDueDate}
           error={error}
           isCreating={isCreating}
+          wallets={wallets}
+          selectedWalletKey={selectedWalletKey}
+          setSelectedWalletKey={setSelectedWalletKey}
+          walletsLoading={walletsLoading}
+          oauthRequired={oauthRequired}
+          walletInstructions={walletInstructions}
+          onRefreshWallets={loadCoinpayWallets}
           onSubmit={handleCreateInvoice}
           onCancel={() => {
             setShowForm(false);
@@ -323,6 +450,13 @@ function InvoiceForm({
   setDueDate,
   error,
   isCreating,
+  wallets,
+  selectedWalletKey,
+  setSelectedWalletKey,
+  walletsLoading,
+  oauthRequired,
+  walletInstructions,
+  onRefreshWallets,
   onSubmit,
   onCancel,
 }: {
@@ -334,9 +468,18 @@ function InvoiceForm({
   setDueDate: (v: string) => void;
   error: string | null;
   isCreating: boolean;
+  wallets: CoinPayWalletOption[];
+  selectedWalletKey: string;
+  setSelectedWalletKey: (v: string) => void;
+  walletsLoading: boolean;
+  oauthRequired: boolean;
+  walletInstructions: string[];
+  onRefreshWallets: () => void;
   onSubmit: () => void;
   onCancel: () => void;
 }) {
+  const hasWallets = wallets.length > 0;
+
   return (
     <div className="border border-border rounded-lg p-4 space-y-3">
       <p className="font-medium text-sm">Create Invoice</p>
@@ -375,10 +518,79 @@ function InvoiceForm({
         />
       </div>
 
+      <div className="space-y-2 rounded-md border border-border bg-background p-3">
+        <div className="flex items-center justify-between gap-3">
+          <label className="text-xs font-medium text-muted-foreground">
+            CoinPay receiving wallet
+          </label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onRefreshWallets}
+            className="h-7 gap-1.5 px-2 text-xs"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Refresh
+          </Button>
+        </div>
+
+        {walletsLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading CoinPay wallets...
+          </div>
+        ) : hasWallets ? (
+          <>
+            <select
+              value={selectedWalletKey}
+              onChange={(event) => setSelectedWalletKey(event.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            >
+              {wallets.map((wallet) => (
+                <option key={walletKey(wallet)} value={walletKey(wallet)}>
+                  {walletLabel(wallet)}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              The poster will pay the generated CoinPay amount on the coin rail for this wallet.
+            </p>
+          </>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Connect CoinPay and add global wallet addresses before sending an invoice.
+            </p>
+            {walletInstructions.length > 0 && (
+              <ol className="list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
+                {walletInstructions.map((instruction) => (
+                  <li key={instruction}>{instruction}</li>
+                ))}
+              </ol>
+            )}
+            {oauthRequired && (
+              <Link
+                href="/settings/connections"
+                className={buttonVariants({ size: "sm", className: "gap-2" })}
+              >
+                <LinkIcon className="h-4 w-4" />
+                Connect CoinPay
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
+
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex gap-2">
-        <Button onClick={onSubmit} disabled={isCreating || !amount} className="flex-1" size="sm">
+        <Button
+          onClick={onSubmit}
+          disabled={isCreating || !amount || !hasWallets}
+          className="flex-1"
+          size="sm"
+        >
           {isCreating ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (

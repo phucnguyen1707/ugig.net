@@ -2,7 +2,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/coinpayportal", () => ({
   createPayment: vi.fn(),
+  findCoinpayGlobalWallet: vi.fn(
+    (wallets, currency, address) =>
+      wallets.find((wallet: any) => wallet.currency === currency && wallet.address === address) ||
+      null
+  ),
+  getCoinpayGlobalWalletTokens: vi.fn(),
+  preferredCoinToPaymentCurrency: vi.fn((value: string | null) => value?.toLowerCase() || null),
   resolveSupportedPaymentCurrency: vi.fn(),
+}));
+
+vi.mock("@/lib/coinpay-oauth", () => ({
+  getConnectedCoinpayAccessToken: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/get-user", () => ({
@@ -27,7 +38,12 @@ vi.mock("@/lib/email", () => ({
 
 import { GET, POST } from "./route";
 import { getAuthContext } from "@/lib/auth/get-user";
-import { createPayment, resolveSupportedPaymentCurrency } from "@/lib/coinpayportal";
+import {
+  createPayment,
+  getCoinpayGlobalWalletTokens,
+  resolveSupportedPaymentCurrency,
+} from "@/lib/coinpayportal";
+import { getConnectedCoinpayAccessToken } from "@/lib/coinpay-oauth";
 import { invoiceReceivedEmail, sendEmail } from "@/lib/email";
 
 const GIG_ID = "8489a861-0999-4107-afca-2592021ac338";
@@ -117,7 +133,19 @@ describe("GET /api/gigs/[id]/invoice", () => {
 });
 
 describe("POST /api/gigs/[id]/invoice", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (getConnectedCoinpayAccessToken as any).mockResolvedValue("coinpay-access-token");
+    (getCoinpayGlobalWalletTokens as any).mockResolvedValue([
+      {
+        currency: "sol",
+        cryptocurrency: "SOL",
+        label: "Solana wallet",
+        address: "So11111111111111111111111111111111111111112",
+        network: "SOL",
+      },
+    ]);
+  });
 
   it("returns 401 if not authenticated", async () => {
     (getAuthContext as any).mockResolvedValue(null);
@@ -204,14 +232,21 @@ describe("POST /api/gigs/[id]/invoice", () => {
     expect(res.status).toBe(400);
   });
 
-  it("creates a pending invoice successfully without creating a CoinPay payment", async () => {
+  it("creates a pending invoice with the worker's CoinPay receiving wallet", async () => {
     const gig = { id: GIG_ID, title: "Test Gig", poster_id: POSTER_ID, payment_coin: "SOL" };
-    const application = { id: APP_ID, applicant_id: WORKER_ID, status: "accepted", proposed_rate: 150 };
+    const application = {
+      id: APP_ID,
+      applicant_id: WORKER_ID,
+      status: "accepted",
+      proposed_rate: 150,
+    };
     const invoiceRecord = {
       id: "local-inv-1",
       metadata: {
         invoice_currency: "USD",
         initiated_by: "worker",
+        receiver_payment_currency: "sol",
+        merchant_wallet_address: "So11111111111111111111111111111111111111112",
       },
     };
 
@@ -230,7 +265,12 @@ describe("POST /api/gigs/[id]/invoice", () => {
       profiles: {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: { username: "testworker", full_name: "Test Worker" }, error: null }),
+        single: vi
+          .fn()
+          .mockResolvedValue({
+            data: { username: "testworker", full_name: "Test Worker" },
+            error: null,
+          }),
       },
       notifications: {
         insert: vi.fn().mockResolvedValue({ error: null }),
@@ -240,7 +280,13 @@ describe("POST /api/gigs/[id]/invoice", () => {
     (getAuthContext as any).mockResolvedValue({ user: { id: WORKER_ID }, supabase: sb });
 
     const res = await POST(
-      req({ application_id: APP_ID, amount: 150, notes: "Work completed" }),
+      req({
+        application_id: APP_ID,
+        amount: 150,
+        payment_currency: "sol",
+        merchant_wallet_address: "So11111111111111111111111111111111111111112",
+        notes: "Work completed",
+      }),
       params
     );
 
@@ -250,7 +296,7 @@ describe("POST /api/gigs/[id]/invoice", () => {
     expect(body.data.coinpay_invoice_id).toBeNull();
     expect(body.data.pay_url).toBeNull();
     expect(body.data.payment_address).toBeNull();
-    expect(body.data.payment_currency).toBeNull();
+    expect(body.data.payment_currency).toBe("sol");
     expect(createPayment).not.toHaveBeenCalled();
     expect(resolveSupportedPaymentCurrency).not.toHaveBeenCalled();
     expect(invoiceReceivedEmail).toHaveBeenCalledWith(
@@ -268,7 +314,12 @@ describe("POST /api/gigs/[id]/invoice", () => {
 
   it("allows the poster to create an invoice for the accepted worker", async () => {
     const gig = { id: GIG_ID, title: "Test Gig", poster_id: POSTER_ID, payment_coin: "SOL" };
-    const application = { id: APP_ID, applicant_id: WORKER_ID, status: "accepted", proposed_rate: 200 };
+    const application = {
+      id: APP_ID,
+      applicant_id: WORKER_ID,
+      status: "accepted",
+      proposed_rate: 200,
+    };
     const invoiceRecord = { id: "local-inv-2", metadata: {} };
 
     let inserted: any = null;
@@ -292,7 +343,12 @@ describe("POST /api/gigs/[id]/invoice", () => {
       profiles: {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: { username: "client", full_name: "The Client" }, error: null }),
+        single: vi
+          .fn()
+          .mockResolvedValue({
+            data: { username: "client", full_name: "The Client" },
+            error: null,
+          }),
       },
       notifications: {
         insert: vi.fn().mockResolvedValue({ error: null }),
@@ -302,7 +358,12 @@ describe("POST /api/gigs/[id]/invoice", () => {
     (getAuthContext as any).mockResolvedValue({ user: { id: POSTER_ID }, supabase: sb });
 
     const res = await POST(
-      req({ application_id: APP_ID, amount: 200 }),
+      req({
+        application_id: APP_ID,
+        amount: 200,
+        payment_currency: "sol",
+        merchant_wallet_address: "So11111111111111111111111111111111111111112",
+      }),
       params
     );
 
@@ -312,7 +373,11 @@ describe("POST /api/gigs/[id]/invoice", () => {
       poster_id: POSTER_ID,
       amount_usd: 200,
       coinpay_invoice_id: null,
-      metadata: expect.objectContaining({ initiated_by: "poster" }),
+      metadata: expect.objectContaining({
+        initiated_by: "poster",
+        receiver_payment_currency: "sol",
+        merchant_wallet_address: "So11111111111111111111111111111111111111112",
+      }),
     });
     expect(createPayment).not.toHaveBeenCalled();
     expect(sendEmail).not.toHaveBeenCalled();
@@ -320,7 +385,12 @@ describe("POST /api/gigs/[id]/invoice", () => {
 
   it("returns an existing invoice instead of creating another invoice or CoinPay payment", async () => {
     const gig = { id: GIG_ID, title: "Test Gig", poster_id: POSTER_ID, payment_coin: "SOL" };
-    const application = { id: APP_ID, applicant_id: WORKER_ID, status: "accepted", proposed_rate: 150 };
+    const application = {
+      id: APP_ID,
+      applicant_id: WORKER_ID,
+      status: "accepted",
+      proposed_rate: 150,
+    };
     const existingInvoice = {
       id: "local-inv-existing",
       coinpay_invoice_id: "cp-pay-existing",

@@ -51,38 +51,20 @@ describe("InvoicePaymentActions", () => {
   });
 
   it("creates a fresh payment request for an expired payment window", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: {
-            wallets: [
-              {
-                currency: "sol",
-                cryptocurrency: "SOL",
-                label: "Solana wallet",
-                address: "So11111111111111111111111111111111111111112",
-              },
-            ],
-            setup_required: false,
-            setup_instructions: [],
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: {
+          pay_url: null,
+          metadata: {
+            payment_address: "NewSolAddress456",
+            amount_crypto: "0.5",
+            payment_currency: "SOL",
+            expires_at: "2030-01-01T00:00:00Z",
           },
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: {
-            pay_url: null,
-            metadata: {
-              payment_address: "NewSolAddress456",
-              amount_crypto: "0.5",
-              payment_currency: "SOL",
-              expires_at: "2030-01-01T00:00:00Z",
-            },
-          },
-        }),
-      });
+        },
+      }),
+    });
 
     render(
       <InvoicePaymentActions
@@ -99,17 +81,10 @@ describe("InvoicePaymentActions", () => {
     fireEvent.click(await screen.findByRole("button", { name: /pay now/i }));
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        "/api/gigs/gig-1/invoice/inv-1/payment-request",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            currency: "sol",
-            address: "So11111111111111111111111111111111111111112",
-          }),
-        }
-      );
+      expect(global.fetch).toHaveBeenCalledWith("/api/gigs/gig-1/invoice/inv-1/payment-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
     });
 
     await waitFor(() => {
@@ -119,46 +94,22 @@ describe("InvoicePaymentActions", () => {
   });
 
   it("can create a payment request when payment details are missing", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: {
-            wallets: [
-              {
-                currency: "sol",
-                cryptocurrency: "SOL",
-                label: "Solana wallet",
-                address: "So11111111111111111111111111111111111111112",
-              },
-            ],
-            setup_required: false,
-            setup_instructions: [],
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: {
+          pay_url: null,
+          metadata: {
+            payment_address: "NewSolAddress456",
+            amount_crypto: "0.5",
+            payment_currency: "SOL",
+            expires_at: "2030-01-01T00:00:00Z",
           },
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: {
-            pay_url: null,
-            metadata: {
-              payment_address: "NewSolAddress456",
-              amount_crypto: "0.5",
-              payment_currency: "SOL",
-              expires_at: "2030-01-01T00:00:00Z",
-            },
-          },
-        }),
-      });
+        },
+      }),
+    });
 
-    render(
-      <InvoicePaymentActions
-        {...baseProps}
-        status="sent"
-        metadata={null}
-      />
-    );
+    render(<InvoicePaymentActions {...baseProps} status="sent" metadata={null} />);
 
     fireEvent.click(await screen.findByRole("button", { name: /pay now/i }));
 
@@ -166,10 +117,6 @@ describe("InvoicePaymentActions", () => {
       expect(global.fetch).toHaveBeenCalledWith("/api/gigs/gig-1/invoice/inv-1/payment-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currency: "sol",
-          address: "So11111111111111111111111111111111111111112",
-        }),
       });
     });
 
