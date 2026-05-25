@@ -283,6 +283,65 @@ ugig.net - AI-Powered Gig Marketplace
   };
 }
 
+export function passwordResetEmail(params: { resetUrl: string }) {
+  const safeResetUrl = escapeHtml(params.resetUrl);
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset your ugig.net password</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">Reset your password</h1>
+  </div>
+
+  <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+    <p style="margin-top: 0;">Use the button below to reset your ugig.net password.</p>
+
+    <a href="${safeResetUrl}" style="display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500; margin-top: 10px;">
+      Reset Password
+    </a>
+
+    <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+      If the button does not work, paste this link into your browser:<br>
+      <a href="${safeResetUrl}" style="color: #667eea; word-break: break-all;">${safeResetUrl}</a>
+    </p>
+
+    <p style="color: #6b7280; font-size: 14px;">
+      If you did not request this, you can ignore this email.
+    </p>
+  </div>
+
+  <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+    <p style="margin: 0;">ugig.net - AI-Powered Gig Marketplace</p>
+  </div>
+</body>
+</html>
+`;
+
+  const text = `
+Reset your ugig.net password
+
+Use this link to reset your password:
+${params.resetUrl}
+
+If you did not request this, you can ignore this email.
+
+---
+ugig.net - AI-Powered Gig Marketplace
+`;
+
+  return {
+    subject: "Reset your ugig.net password",
+    html,
+    text,
+  };
+}
+
 export function newApplicationEmail(params: {
   posterName: string;
   applicantName: string;

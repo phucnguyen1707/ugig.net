@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { referralInviteEmail, signupConfirmationEmail, videoCallInviteEmail } from "./email";
+import {
+  passwordResetEmail,
+  referralInviteEmail,
+  signupConfirmationEmail,
+  videoCallInviteEmail,
+} from "./email";
 
 describe("videoCallInviteEmail", () => {
   beforeEach(() => {
@@ -153,5 +158,22 @@ describe("signupConfirmationEmail", () => {
     expect(result.html).toContain("Confirm Email");
     expect(result.html).toContain("https://ugig.net/auth/confirm?token_hash=abc&amp;type=signup");
     expect(result.text).toContain("https://ugig.net/auth/confirm?token_hash=abc&type=signup");
+  });
+});
+
+describe("passwordResetEmail", () => {
+  it("generates a password reset email with the supplied link", () => {
+    const result = passwordResetEmail({
+      resetUrl: "https://ugig.net/auth/confirm?token_hash=abc&type=recovery&next=%2Freset-password",
+    });
+
+    expect(result.subject).toBe("Reset your ugig.net password");
+    expect(result.html).toContain("Reset Password");
+    expect(result.html).toContain(
+      "https://ugig.net/auth/confirm?token_hash=abc&amp;type=recovery&amp;next=%2Freset-password"
+    );
+    expect(result.text).toContain(
+      "https://ugig.net/auth/confirm?token_hash=abc&type=recovery&next=%2Freset-password"
+    );
   });
 });
