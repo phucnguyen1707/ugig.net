@@ -8,15 +8,28 @@ vi.mock("@/lib/rate-limit", () => ({
   getRateLimitIdentifier: () => "test",
 }));
 
-const mockResend = vi.fn();
+const mockGenerateLink = vi.fn();
+const mockListUsers = vi.fn();
+const mockSendEmail = vi.fn();
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: () =>
-    Promise.resolve({
-      auth: {
-        resend: mockResend,
+vi.mock("@/lib/supabase/service", () => ({
+  createServiceClient: () => ({
+    auth: {
+      admin: {
+        generateLink: mockGenerateLink,
+        listUsers: mockListUsers,
       },
-    }),
+    },
+  }),
+}));
+
+vi.mock("@/lib/email", () => ({
+  sendEmail: (...args: unknown[]) => mockSendEmail(...args),
+  signupConfirmationEmail: ({ confirmUrl }: { confirmUrl: string }) => ({
+    subject: "Confirm your ugig.net account",
+    html: confirmUrl,
+    text: confirmUrl,
+  }),
 }));
 
 function makeRequest(body: Record<string, unknown>) {
@@ -38,25 +51,62 @@ function makeRawRequest(body: string) {
 describe("POST /api/auth/resend-confirmation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGenerateLink.mockResolvedValue({
+      data: {
+        properties: { hashed_token: "resend-token" },
+        user: { user_metadata: { username: "testuser" } },
+      },
+      error: null,
+    });
+    mockListUsers.mockResolvedValue({
+      data: {
+        users: [
+          {
+            email: "test@example.com",
+            email_confirmed_at: null,
+            user_metadata: { username: "testuser" },
+          },
+        ],
+      },
+      error: null,
+    });
+    mockSendEmail.mockResolvedValue({ success: true });
   });
 
   it("should return success message on valid email", async () => {
-    mockResend.mockResolvedValue({ error: null });
-
     const res = await POST(makeRequest({ email: "test@example.com" }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.message).toContain("confirmation link has been sent");
-    expect(mockResend).toHaveBeenCalledWith(expect.objectContaining({ type: "signup", email: "test@example.com" }));
+    expect(mockGenerateLink).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "magiclink", email: "test@example.com" })
+    );
+    expect(mockSendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "test@example.com",
+        html: "https://ugig.net/auth/confirm?token_hash=resend-token&type=magiclink&next=/dashboard",
+      })
+    );
   });
 
   it("should return same message even on error (no email leak)", async () => {
-    mockResend.mockResolvedValue({ error: { message: "User not found" } });
+    mockGenerateLink.mockResolvedValue({ data: {}, error: { message: "User not found" } });
 
     const res = await POST(makeRequest({ email: "nonexistent@example.com" }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.message).toContain("confirmation link has been sent");
+  });
+
+  it("does not create or send when the email does not exist", async () => {
+    mockListUsers.mockResolvedValue({ data: { users: [] }, error: null });
+
+    const res = await POST(makeRequest({ email: "nonexistent@example.com" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.message).toContain("confirmation link has been sent");
+    expect(mockGenerateLink).not.toHaveBeenCalled();
+    expect(mockSendEmail).not.toHaveBeenCalled();
   });
 
   it("should return 400 for invalid email", async () => {
@@ -69,6 +119,6 @@ describe("POST /api/auth/resend-confirmation", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("Invalid request body");
-    expect(mockResend).not.toHaveBeenCalled();
+    expect(mockGenerateLink).not.toHaveBeenCalled();
   });
 });

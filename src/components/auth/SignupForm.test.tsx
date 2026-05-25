@@ -6,10 +6,12 @@ import { auth } from "@/lib/api";
 vi.mock("@/lib/api", () => ({
   auth: {
     signup: vi.fn(),
+    resendConfirmation: vi.fn(),
   },
 }));
 
 const signupMock = vi.mocked(auth.signup);
+const resendConfirmationMock = vi.mocked(auth.resendConfirmation);
 
 const storage = new Map<string, string>();
 
@@ -44,6 +46,7 @@ describe("SignupForm referral handling", () => {
     vi.stubGlobal("localStorage", localStorageMock);
     localStorage.clear();
     signupMock.mockResolvedValue({ data: {}, error: null });
+    resendConfirmationMock.mockResolvedValue({ data: {}, error: null });
   });
 
   it("loads a stored referral and submits it with the signup request", async () => {
@@ -58,9 +61,7 @@ describe("SignupForm referral handling", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
 
     await waitFor(() => {
-      expect(signupMock).toHaveBeenCalledWith(
-        expect.objectContaining({ ref: "stored-ref" })
-      );
+      expect(signupMock).toHaveBeenCalledWith(expect.objectContaining({ ref: "stored-ref" }));
     });
   });
 
@@ -75,9 +76,26 @@ describe("SignupForm referral handling", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
 
     await waitFor(() => {
-      expect(signupMock).toHaveBeenCalledWith(
-        expect.objectContaining({ ref: "url-ref" })
-      );
+      expect(signupMock).toHaveBeenCalledWith(expect.objectContaining({ ref: "url-ref" }));
     });
+  });
+
+  it("lets a new user resend confirmation from the signup success screen", async () => {
+    render(<SignupForm />);
+
+    fillValidSignupForm();
+    fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
+
+    expect(await screen.findByText("Check your email")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Resend confirmation email" }));
+
+    await waitFor(() => {
+      expect(resendConfirmationMock).toHaveBeenCalledWith({
+        email: "newuser@example.com",
+      });
+    });
+    expect(
+      await screen.findByText("Confirmation email sent again. Check your inbox.")
+    ).toBeInTheDocument();
   });
 });

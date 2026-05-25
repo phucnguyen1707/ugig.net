@@ -23,11 +23,15 @@ vi.mock("@/lib/account-type-detection", () => ({
 }));
 
 vi.mock("@/lib/email", () => ({
-  sendEmail: vi.fn(),
-  welcomeEmail: vi.fn(),
+  sendEmail: vi.fn().mockResolvedValue({ success: true }),
+  signupConfirmationEmail: vi.fn((params: { confirmUrl: string }) => ({
+    subject: "Confirm your ugig.net account",
+    html: params.confirmUrl,
+    text: params.confirmUrl,
+  })),
 }));
 
-const mockSignUp = vi.fn();
+const mockGenerateLink = vi.fn();
 const mockActivityInsert = vi.fn();
 const mockCreateClient = vi.fn();
 const mockCreateServiceClient = vi.fn();
@@ -67,13 +71,15 @@ describe("POST /api/auth/signup", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockSignUp.mockResolvedValue({
-      data: { user: { id: "new-user-id" } },
+    mockGenerateLink.mockResolvedValue({
+      data: {
+        user: { id: "new-user-id" },
+        properties: { hashed_token: "signup-token" },
+      },
       error: null,
     });
 
     mockCreateClient.mockResolvedValue({
-      auth: { signUp: mockSignUp },
       from: vi.fn((table: string) => {
         if (table === "profiles") {
           return {
@@ -91,6 +97,11 @@ describe("POST /api/auth/signup", () => {
     mockActivityInsert.mockResolvedValue({ data: null, error: null });
 
     mockCreateServiceClient.mockReturnValue({
+      auth: {
+        admin: {
+          generateLink: mockGenerateLink,
+        },
+      },
       from: vi.fn((table: string) => {
         if (table === "profiles") {
           return {
@@ -145,8 +156,40 @@ describe("POST /api/auth/signup", () => {
         metadata: { referred_username: "newuser" },
       })
     );
-    expect(mockActivityInsert.mock.calls[0][0].metadata).not.toHaveProperty(
-      "referred_email"
+    expect(mockActivityInsert.mock.calls[0][0].metadata).not.toHaveProperty("referred_email");
+  });
+
+  it("sends signup confirmation email through app mailer", async () => {
+    const { sendEmail, signupConfirmationEmail } = await import("@/lib/email");
+
+    const res = await POST(
+      makeRequest({
+        email: "new-user@example.com",
+        password: "Goodpass1",
+        username: "newuser",
+        account_type: "human",
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockGenerateLink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "signup",
+        email: "new-user@example.com",
+        password: "Goodpass1",
+      })
+    );
+    expect(signupConfirmationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "newuser",
+        confirmUrl: "https://ugig.net/auth/confirm?token_hash=signup-token&type=signup",
+      })
+    );
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "new-user@example.com",
+        subject: "Confirm your ugig.net account",
+      })
     );
   });
 });

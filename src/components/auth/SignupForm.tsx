@@ -16,6 +16,10 @@ export function SignupForm({ referralCode }: { referralCode?: string | null }) {
   const [ref, setRef] = useState<string | null>(referralCode ?? null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [signupEmail, setSignupEmail] = useState("");
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -58,8 +62,28 @@ export function SignupForm({ referralCode }: { referralCode?: string | null }) {
     }
 
     clearStoredReferral();
+    setSignupEmail(data.email);
+    setResendMessage(null);
+    setResendError(null);
     setSuccess(true);
     setIsLoading(false);
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!signupEmail) return;
+
+    setIsResending(true);
+    setResendMessage(null);
+    setResendError(null);
+
+    const result = await auth.resendConfirmation({ email: signupEmail });
+    if (result.error) {
+      setResendError(result.error);
+    } else {
+      setResendMessage("Confirmation email sent again. Check your inbox.");
+    }
+
+    setIsResending(false);
   };
 
   if (success) {
@@ -68,10 +92,26 @@ export function SignupForm({ referralCode }: { referralCode?: string | null }) {
         <div className="p-4 bg-primary/10 rounded-lg">
           <h3 className="font-semibold text-primary">Check your email</h3>
           <p className="text-sm text-muted-foreground mt-2">
-            We&apos;ve sent you a confirmation link. Please check your email to
-            verify your account.
+            We&apos;ve sent you a confirmation link. Please check your email to verify your account.
           </p>
         </div>
+        {resendMessage && (
+          <div className="p-3 text-sm text-primary bg-primary/10 rounded-md">{resendMessage}</div>
+        )}
+        {resendError && (
+          <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+            {resendError}
+          </div>
+        )}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleResendConfirmation}
+          disabled={isResending || !signupEmail}
+          className="w-full"
+        >
+          {isResending ? "Sending..." : "Resend confirmation email"}
+        </Button>
         <Link href="/login" className="text-sm text-primary hover:underline">
           Back to login
         </Link>
@@ -84,14 +124,14 @@ export function SignupForm({ referralCode }: { referralCode?: string | null }) {
       {ref && (
         <div className="p-3 text-sm text-primary bg-primary/10 rounded-md flex items-center gap-2">
           <span>👋</span>
-          <span>Referred by <strong>{ref}</strong></span>
+          <span>
+            Referred by <strong>{ref}</strong>
+          </span>
         </div>
       )}
 
       {error && (
-        <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-          {error}
-        </div>
+        <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">{error}</div>
       )}
 
       <div className="space-y-2">
@@ -103,9 +143,7 @@ export function SignupForm({ referralCode }: { referralCode?: string | null }) {
           {...register("username")}
           disabled={isLoading}
         />
-        {errors.username && (
-          <p className="text-sm text-destructive">{errors.username.message}</p>
-        )}
+        {errors.username && <p className="text-sm text-destructive">{errors.username.message}</p>}
       </div>
 
       <div className="space-y-2">
@@ -117,9 +155,7 @@ export function SignupForm({ referralCode }: { referralCode?: string | null }) {
           {...register("email")}
           disabled={isLoading}
         />
-        {errors.email && (
-          <p className="text-sm text-destructive">{errors.email.message}</p>
-        )}
+        {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
       </div>
 
       <div className="space-y-2">
@@ -131,9 +167,7 @@ export function SignupForm({ referralCode }: { referralCode?: string | null }) {
           {...register("password")}
           disabled={isLoading}
         />
-        {errors.password && (
-          <p className="text-sm text-destructive">{errors.password.message}</p>
-        )}
+        {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
         <p className="text-xs text-muted-foreground">
           Must be at least 8 characters with uppercase, lowercase, and number
         </p>
@@ -167,9 +201,7 @@ export function SignupForm({ referralCode }: { referralCode?: string | null }) {
           {errors.agent_name && (
             <p className="text-sm text-destructive">{errors.agent_name.message}</p>
           )}
-          <p className="text-xs text-muted-foreground">
-            Required for agent accounts
-          </p>
+          <p className="text-xs text-muted-foreground">Required for agent accounts</p>
         </div>
       )}
 

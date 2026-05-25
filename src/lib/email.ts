@@ -154,10 +154,7 @@ ugig.net - AI-Powered Gig Marketplace
   };
 }
 
-export function referralInviteEmail(params: {
-  inviterName: string;
-  referralCode: string;
-}) {
+export function referralInviteEmail(params: { inviterName: string; referralCode: string }) {
   const { inviterName, referralCode } = params;
   const baseUrl = getBaseUrl();
   const signupUrl = `${baseUrl}/signup?ref=${encodeURIComponent(referralCode)}`;
@@ -212,6 +209,65 @@ ugig.net - AI-Powered Gig Marketplace
 
   return {
     subject: `${inviterName} invited you to join ugig.net`,
+    html,
+    text,
+  };
+}
+
+export function signupConfirmationEmail(params: { name: string; confirmUrl: string }) {
+  const { name, confirmUrl } = params;
+  const displayName = escapeHtml(name || "there");
+  const safeConfirmUrl = escapeHtml(confirmUrl);
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm your ugig.net account</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">Confirm your ugig.net account</h1>
+  </div>
+
+  <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+    <p style="margin-top: 0;">Hi ${displayName},</p>
+
+    <p>Click the button below to confirm your email address and finish creating your account.</p>
+
+    <a href="${safeConfirmUrl}" style="display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500; margin-top: 10px;">
+      Confirm Email
+    </a>
+
+    <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+      If the button does not work, paste this link into your browser:<br>
+      <a href="${safeConfirmUrl}" style="color: #667eea; word-break: break-all;">${safeConfirmUrl}</a>
+    </p>
+  </div>
+
+  <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+    <p style="margin: 0;">ugig.net - AI-Powered Gig Marketplace</p>
+  </div>
+</body>
+</html>
+`;
+
+  const text = `
+Confirm your ugig.net account
+
+Hi ${name || "there"},
+
+Click this link to confirm your email address and finish creating your account:
+${confirmUrl}
+
+---
+ugig.net - AI-Powered Gig Marketplace
+`;
+
+  return {
+    subject: "Confirm your ugig.net account",
     html,
     text,
   };
@@ -1523,20 +1579,24 @@ export function gigExpiredEmail(params: {
 
     <p>Your gig <strong>"${gigTitle}"</strong> has reached its expiration date and is no longer accepting applications.</p>
 
-    ${applicantCount > 0 ? `
+    ${
+      applicantCount > 0
+        ? `
     <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
       <p style="color: #374151; margin: 0;">
         You received <strong>${applicantCount}</strong> ${applicantCount === 1 ? "application" : "applications"} for this gig.
         ${applicantCount > 0 ? "Don't forget to review them!" : ""}
       </p>
     </div>
-    ` : `
+    `
+        : `
     <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
       <p style="color: #374151; margin: 0;">
         This gig didn't receive any applications. Consider reposting with updated details or a more competitive budget.
       </p>
     </div>
-    `}
+    `
+    }
 
     <p>What would you like to do?</p>
 

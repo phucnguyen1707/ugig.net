@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { signupSchema } from "@/lib/validations";
 import { checkRateLimit, rateLimitExceeded, getRateLimitIdentifier } from "@/lib/rate-limit";
-import { sendEmail, welcomeEmail } from "@/lib/email";
+import { sendEmail, signupConfirmationEmail } from "@/lib/email";
 import { checkSpam, checkEmail } from "@/lib/spam-check";
 import { generateAndStoreDid } from "@/lib/auth/did";
 import { detectSuspiciousAccountType } from "@/lib/account-type-detection";
@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient();
+    const svc = createServiceClient();
 
     // Check if username is already taken (use maybeSingle to avoid error when not found)
     const { data: existingUser, error: usernameError } = await supabase
@@ -75,37 +76,34 @@ export async function POST(request: NextRequest) {
 
     if (usernameError) {
       console.error("Username check error:", usernameError);
-      return NextResponse.json(
-        { error: "Failed to check username availability" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to check username availability" }, { status: 500 });
     }
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: "Username is already taken" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Username is already taken" }, { status: 400 });
     }
 
-    // Create the user with username and agent fields in metadata
+    // Create the user and generate the confirmation link without relying on
+    // Supabase-hosted email delivery.
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://ugig.net";
-    const { data, error } = await supabase.auth.signUp({
+    const userMetadata = {
+      username,
+      account_type,
+      ...(account_type === "agent" && {
+        agent_name,
+        agent_description,
+        agent_version,
+        agent_operator_url,
+        agent_source_url,
+      }),
+    };
+    const { data, error } = await svc.auth.admin.generateLink({
+      type: "signup",
       email,
       password,
       options: {
-        emailRedirectTo: `${appUrl}/auth/confirm`,
-        data: {
-          username,
-          account_type,
-          ...(account_type === "agent" && {
-      agent_name,
-            agent_description,
-            agent_version,
-            agent_operator_url,
-            agent_source_url,
-          }),
-        },
+        redirectTo: `${appUrl}/auth/confirm`,
+        data: userMetadata,
       },
     });
 
@@ -114,11 +112,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // Use service client for all post-signup writes (user has no session yet, RLS blocks)
-    const svc = createServiceClient();
+    const user = data.user;
+    const tokenHash = data.properties?.hashed_token;
+    if (!user || !tokenHash) {
+      console.error("Signup link generation returned no user or token");
+      return NextResponse.json({ error: "Failed to create confirmation email" }, { status: 500 });
+    }
+
+    const confirmUrl = `${appUrl}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}&type=signup`;
 
     // Handle referral tracking
-    if (ref && data.user) {
+    if (ref && user) {
       try {
         // Find the referrer by referral_code or username
         // Validate ref is alphanumeric to prevent PostgREST filter injection (#72)
@@ -149,7 +153,7 @@ export async function POST(request: NextRequest) {
           await (svc as any)
             .from("referrals")
             .update({
-              referred_user_id: data.user.id,
+              referred_user_id: user.id,
               status: "registered",
               registered_at: new Date().toISOString(),
             })
@@ -169,7 +173,7 @@ export async function POST(request: NextRequest) {
             await (svc as any).from("referrals").insert({
               referrer_id: referrer.id,
               referred_email: email.toLowerCase(),
-              referred_user_id: data.user.id,
+              referred_user_id: user.id,
               referral_code: ref,
               status: "registered",
               registered_at: new Date().toISOString(),
@@ -180,13 +184,11 @@ export async function POST(request: NextRequest) {
           await svc.from("activities").insert({
             user_id: referrer.id,
             activity_type: "referral_signup",
-            reference_id: data.user.id,
+            reference_id: user.id,
             reference_type: "user",
             metadata: { referred_username: username },
             is_public: true,
           });
-
-
         }
       } catch (refError) {
         // Don't fail signup if referral tracking fails
@@ -195,9 +197,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate DID immediately at signup (don't wait for email confirmation webhook)
-    if (data.user) {
+    if (user) {
       try {
-        const did = await generateAndStoreDid(svc, data.user.id, email);
+        const did = await generateAndStoreDid(svc, user.id, email);
         if (did) {
           console.log(`[Signup] DID generated for ${email}: ${did}`);
         }
@@ -208,7 +210,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for suspicious account type
-    if (data.user) {
+    if (user) {
       const suspicion = detectSuspiciousAccountType({
         username,
         account_type,
@@ -220,18 +222,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Welcome email is sent after email confirmation via the
-    // /api/auth/confirmed webhook (triggered by Supabase auth hook).
+    const confirmation = signupConfirmationEmail({
+      name: account_type === "agent" && agent_name ? agent_name : username,
+      confirmUrl,
+    });
+    const emailResult = await sendEmail({
+      to: email,
+      subject: confirmation.subject,
+      html: confirmation.html,
+      text: confirmation.text,
+    });
+
+    if (!emailResult.success || "skipped" in emailResult) {
+      console.error("[signup] Confirmation email failed:", emailResult);
+      return NextResponse.json(
+        {
+          error:
+            "Account created, but the confirmation email could not be sent. Use resend confirmation to try again.",
+        },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({
       message: "Check your email to confirm your account",
-      user: data.user,
+      user,
     });
   } catch (err) {
     console.error("Signup error:", err);
-    return NextResponse.json(
-      { error: "An unexpected error occurred" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
   }
 }

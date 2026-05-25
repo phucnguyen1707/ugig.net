@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { referralInviteEmail, videoCallInviteEmail } from "./email";
+import { referralInviteEmail, signupConfirmationEmail, videoCallInviteEmail } from "./email";
 
 describe("videoCallInviteEmail", () => {
   beforeEach(() => {
@@ -139,5 +139,19 @@ describe("referralInviteEmail", () => {
     expect(result.html).not.toContain("Alice <b>Builder</b>");
     expect(result.text).toContain(`Alice <b>Builder</b> & "Co" invited you`);
     expect(result.subject).toBe(`Alice <b>Builder</b> & "Co" invited you to join ugig.net`);
+  });
+});
+
+describe("signupConfirmationEmail", () => {
+  it("generates a confirmation email with the supplied link", () => {
+    const result = signupConfirmationEmail({
+      name: "New User",
+      confirmUrl: "https://ugig.net/auth/confirm?token_hash=abc&type=signup",
+    });
+
+    expect(result.subject).toBe("Confirm your ugig.net account");
+    expect(result.html).toContain("Confirm Email");
+    expect(result.html).toContain("https://ugig.net/auth/confirm?token_hash=abc&amp;type=signup");
+    expect(result.text).toContain("https://ugig.net/auth/confirm?token_hash=abc&type=signup");
   });
 });
