@@ -40,6 +40,26 @@ function chainable(data: unknown, error: unknown = null, count: number | null = 
   return new Proxy(result, handler);
 }
 
+function offerListChain(rangeSpy: ReturnType<typeof vi.fn>) {
+  const queryChain: Record<string, any> = {};
+  const chainHandler: ProxyHandler<any> = {
+    get(_target, prop) {
+      if (prop === "then") return undefined;
+      if (prop === "data") return [];
+      if (prop === "error") return null;
+      if (prop === "count") return 0;
+      if (prop === "range") {
+        return (...args: any[]) => {
+          rangeSpy(...args);
+          return new Proxy(queryChain, chainHandler);
+        };
+      }
+      return (..._args: any[]) => new Proxy(queryChain, chainHandler);
+    },
+  };
+  return new Proxy(queryChain, chainHandler);
+}
+
 describe("GET /api/affiliates/offers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -97,6 +117,32 @@ describe("GET /api/affiliates/offers", () => {
 
     expect(res.status).toBe(200);
     expect(body.offers[0].product_url).toBeUndefined();
+  });
+
+  it("clamps invalid pagination values before querying", async () => {
+    const rangeSpy = vi.fn();
+    mockFrom.mockReturnValue(offerListChain(rangeSpy));
+
+    const res = await GET(makeRequest({ page: "abc", limit: "-5" }));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(rangeSpy).toHaveBeenCalledWith(0, 0);
+    expect(body.page).toBe(1);
+    expect(body.limit).toBe(1);
+  });
+
+  it("caps huge pagination values before querying", async () => {
+    const rangeSpy = vi.fn();
+    mockFrom.mockReturnValue(offerListChain(rangeSpy));
+
+    const res = await GET(makeRequest({ page: "1e308", limit: "999" }));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(rangeSpy).toHaveBeenCalledWith(4999950, 4999999);
+    expect(body.page).toBe(100000);
+    expect(body.limit).toBe(50);
   });
 });
 
