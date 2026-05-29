@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CryptoPaymentBox } from "@/components/payments/CryptoPaymentBox";
-import { CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCw, Send } from "lucide-react";
 
 type InvoiceStatus = "draft" | "sent" | "paid" | "cancelled" | "expired";
 
@@ -42,6 +42,9 @@ export function InvoicePaymentActions({
   const [metadata, setMetadata] = useState<InvoicePaymentMetadata | null>(initialMetadata);
   const [submitting, setSubmitting] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [requestingNew, setRequestingNew] = useState(false);
+  const [requestedNew, setRequestedNew] = useState(false);
+  const [canRequestNew, setCanRequestNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -104,6 +107,7 @@ export function InvoicePaymentActions({
     setSubmitting(true);
     setError(null);
     setStatusMessage(null);
+    setCanRequestNew(false);
 
     try {
       const res = await fetch(`/api/gigs/${gigId}/invoice/${invoiceId}/payment-request`, {
@@ -113,7 +117,13 @@ export function InvoicePaymentActions({
       const json = await res.json();
 
       if (!res.ok) {
-        setError(json.error || "Failed to create payment request");
+        const message = json.error || "Failed to create payment request";
+        setError(message);
+        // The worker's CoinPay wallet is missing or no longer connected, so this
+        // invoice can't be paid as-is. Offer to ask them for a fresh invoice.
+        if (/wallet|coinpay|not connected|receiving/i.test(message)) {
+          setCanRequestNew(true);
+        }
         return;
       }
 
@@ -134,6 +144,32 @@ export function InvoicePaymentActions({
       setError("Network error. Try again.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const requestNewInvoice = async () => {
+    setRequestingNew(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/gigs/${gigId}/invoice/${invoiceId}/request-new`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(json.error || "Failed to request a new invoice");
+        return;
+      }
+
+      setRequestedNew(true);
+      setCanRequestNew(false);
+      setStatusMessage("We asked the worker to send a fresh invoice. You'll be notified when it arrives.");
+    } catch {
+      setError("Network error. Try again.");
+    } finally {
+      setRequestingNew(false);
     }
   };
 
@@ -200,20 +236,45 @@ export function InvoicePaymentActions({
       </p>
       {statusMessage && <p className="text-sm text-green-700">{statusMessage}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button
-        type="button"
-        size="sm"
-        onClick={createPaymentRequest}
-        disabled={submitting}
-        className="gap-2"
-      >
-        {submitting ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <RefreshCw className="h-4 w-4" />
+      {canRequestNew && (
+        <p className="text-xs text-muted-foreground">
+          The worker&apos;s CoinPay wallet isn&apos;t connected, so this invoice can&apos;t be paid.
+          Ask them to send a fresh invoice with a connected wallet.
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          onClick={createPaymentRequest}
+          disabled={submitting || requestingNew}
+          className="gap-2"
+        >
+          {submitting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+          Pay now
+        </Button>
+        {canRequestNew && !requestedNew && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={requestNewInvoice}
+            disabled={requestingNew}
+            className="gap-2"
+          >
+            {requestingNew ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            Request a new invoice
+          </Button>
         )}
-        Pay now
-      </Button>
+      </div>
     </div>
   );
 }

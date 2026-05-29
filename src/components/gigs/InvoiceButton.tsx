@@ -82,6 +82,9 @@ export function InvoiceButton({
   const [invoices, setInvoices] = useState<GigInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
+  const [walletErrorInvoiceId, setWalletErrorInvoiceId] = useState<string | null>(null);
+  const [requestingNewId, setRequestingNewId] = useState<string | null>(null);
+  const [requestedNewIds, setRequestedNewIds] = useState<string[]>([]);
   const [wallets, setWallets] = useState<CoinPayWalletOption[]>([]);
   const [selectedWalletKey, setSelectedWalletKey] = useState("");
   const [walletsLoading, setWalletsLoading] = useState(false);
@@ -214,6 +217,7 @@ export function InvoiceButton({
   const handleCreatePaymentRequest = async (invoiceId: string) => {
     setPayingInvoiceId(invoiceId);
     setError(null);
+    setWalletErrorInvoiceId(null);
 
     try {
       const response = await fetch(`/api/gigs/${gigId}/invoice/${invoiceId}/payment-request`, {
@@ -223,7 +227,13 @@ export function InvoiceButton({
       const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || "Failed to create payment request");
+        const message = result.error || "Failed to create payment request";
+        setError(message);
+        // The worker's CoinPay wallet is missing or no longer connected. Let the
+        // poster ask them for a fresh invoice instead of leaving a dead end.
+        if (/wallet|coinpay|not connected|receiving/i.test(message)) {
+          setWalletErrorInvoiceId(invoiceId);
+        }
         return;
       }
 
@@ -248,6 +258,31 @@ export function InvoiceButton({
       setError("An error occurred. Please try again.");
     } finally {
       setPayingInvoiceId(null);
+    }
+  };
+
+  const handleRequestNewInvoice = async (invoiceId: string) => {
+    setRequestingNewId(invoiceId);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/gigs/${gigId}/invoice/${invoiceId}/request-new`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.error || "Failed to request a new invoice");
+        return;
+      }
+
+      setRequestedNewIds((prev) => [...prev, invoiceId]);
+      setWalletErrorInvoiceId(null);
+    } catch {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setRequestingNewId(null);
     }
   };
 
@@ -335,19 +370,49 @@ export function InvoiceButton({
                     CoinPay wallet.
                   </p>
                   {error && <p className="text-sm text-destructive">{error}</p>}
-                  <Button
-                    size="sm"
-                    onClick={() => handleCreatePaymentRequest(inv.id)}
-                    disabled={payingInvoiceId === inv.id}
-                    className="gap-2"
-                  >
-                    {payingInvoiceId === inv.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <DollarSign className="h-4 w-4" />
+                  {walletErrorInvoiceId === inv.id && (
+                    <p className="text-xs text-muted-foreground">
+                      The worker&apos;s CoinPay wallet isn&apos;t connected, so this invoice
+                      can&apos;t be paid. Ask them to send a fresh invoice with a connected wallet.
+                    </p>
+                  )}
+                  {requestedNewIds.includes(inv.id) && (
+                    <p className="text-sm text-green-600">
+                      We asked the worker to send a fresh invoice. You&apos;ll be notified when it
+                      arrives.
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleCreatePaymentRequest(inv.id)}
+                      disabled={payingInvoiceId === inv.id || requestingNewId === inv.id}
+                      className="gap-2"
+                    >
+                      {payingInvoiceId === inv.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <DollarSign className="h-4 w-4" />
+                      )}
+                      Pay now
+                    </Button>
+                    {walletErrorInvoiceId === inv.id && !requestedNewIds.includes(inv.id) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRequestNewInvoice(inv.id)}
+                        disabled={requestingNewId === inv.id}
+                        className="gap-2"
+                      >
+                        {requestingNewId === inv.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                        Request a new invoice
+                      </Button>
                     )}
-                    Pay now
-                  </Button>
+                  </div>
                 </div>
               )}
 
