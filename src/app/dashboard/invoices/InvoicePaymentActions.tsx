@@ -4,9 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CryptoPaymentBox } from "@/components/payments/CryptoPaymentBox";
-import { CheckCircle2, Loader2, RefreshCw, Send } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCw, Send, XCircle } from "lucide-react";
 
-type InvoiceStatus = "draft" | "sent" | "paid" | "cancelled" | "expired";
+type InvoiceStatus =
+  | "draft"
+  | "sent"
+  | "paid"
+  | "cancelled"
+  | "expired"
+  | "rejected";
 
 interface InvoicePaymentMetadata {
   payment_address?: string | null;
@@ -44,6 +50,7 @@ export function InvoicePaymentActions({
   const [checking, setChecking] = useState(false);
   const [requestingNew, setRequestingNew] = useState(false);
   const [requestedNew, setRequestedNew] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [canRequestNew, setCanRequestNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -173,12 +180,71 @@ export function InvoicePaymentActions({
     }
   };
 
+  const rejectInvoice = async () => {
+    if (
+      !window.confirm(
+        "Reject this invoice? The sender is notified and it can no longer be paid."
+      )
+    ) {
+      return;
+    }
+    setRejecting(true);
+    setError(null);
+    setStatusMessage(null);
+    try {
+      const res = await fetch(`/api/gigs/${gigId}/invoice/${invoiceId}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error || "Failed to reject invoice");
+        return;
+      }
+      setStatus("rejected");
+      router.refresh();
+    } catch {
+      setError("Network error. Try again.");
+    } finally {
+      setRejecting(false);
+    }
+  };
+
+  const rejectButton = (
+    <Button
+      type="button"
+      size="sm"
+      variant="ghost"
+      onClick={rejectInvoice}
+      disabled={rejecting || submitting}
+      className="gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+    >
+      {rejecting ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <XCircle className="h-4 w-4" />
+      )}
+      Reject invoice
+    </Button>
+  );
+
   if (status === "paid") {
     return (
       <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-4 text-sm text-green-700">
         <div className="flex items-center gap-2 font-medium">
           <CheckCircle2 className="h-4 w-4" />
           Payment confirmed
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "rejected") {
+    return (
+      <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-600">
+        <div className="flex items-center gap-2 font-medium">
+          <XCircle className="h-4 w-4" />
+          You rejected this invoice
         </div>
       </div>
     );
@@ -221,6 +287,8 @@ export function InvoicePaymentActions({
             Check payment
           </Button>
         </div>
+
+        <div className="flex justify-end">{rejectButton}</div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
@@ -274,6 +342,7 @@ export function InvoicePaymentActions({
             Request a new invoice
           </Button>
         )}
+        {rejectButton}
       </div>
     </div>
   );

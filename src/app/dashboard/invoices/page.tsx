@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { InvoicePaymentActions } from "./InvoicePaymentActions";
+import { InvoiceCharges } from "./InvoiceCharges";
 import {
   ArrowLeft,
   ExternalLink,
@@ -36,7 +37,7 @@ interface InvoiceRow {
   poster_id: string;
   amount_usd: number;
   currency: string;
-  status: "draft" | "sent" | "paid" | "cancelled" | "expired";
+  status: "draft" | "sent" | "paid" | "cancelled" | "expired" | "rejected";
   pay_url: string | null;
   notes: string | null;
   due_date: string | null;
@@ -75,6 +76,12 @@ function statusBadge(status: InvoiceRow["status"]) {
       );
     case "cancelled":
       return <Badge variant="secondary">Cancelled</Badge>;
+    case "rejected":
+      return (
+        <Badge className="gap-1 bg-red-500/10 text-red-600 border-red-500/20">
+          Rejected
+        </Badge>
+      );
     case "expired":
       return (
         <Badge className="gap-1 bg-blue-500/10 text-blue-600 border-blue-500/20">
@@ -260,6 +267,15 @@ export default async function InvoicesDashboardPage({
                     {inv.notes && (
                       <p className="text-sm text-muted-foreground mb-3">{inv.notes}</p>
                     )}
+
+                    <div className="mb-3">
+                      <InvoiceCharges
+                        amountUsd={Number(inv.amount_usd)}
+                        currency={inv.currency}
+                        gigTitle={inv.gig?.title ?? null}
+                        metadata={inv.metadata}
+                      />
+                    </div>
 
                     <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                       <span>
