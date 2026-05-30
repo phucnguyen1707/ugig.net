@@ -20,6 +20,7 @@ interface InvoicePaymentMetadata {
   payment_currency?: string | null;
   checkout_url?: string | null;
   expires_at?: string | null;
+  replacement_requested_at?: string | null;
 }
 
 interface InvoicePaymentActionsProps {
@@ -49,7 +50,9 @@ export function InvoicePaymentActions({
   const [submitting, setSubmitting] = useState(false);
   const [checking, setChecking] = useState(false);
   const [requestingNew, setRequestingNew] = useState(false);
-  const [requestedNew, setRequestedNew] = useState(false);
+  const [requestedNew, setRequestedNew] = useState(
+    Boolean(initialMetadata?.replacement_requested_at)
+  );
   const [rejecting, setRejecting] = useState(false);
   const [canRequestNew, setCanRequestNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -252,6 +255,25 @@ export function InvoicePaymentActions({
 
   if (status === "cancelled" || status === "draft") {
     return null;
+  }
+
+  // The payer already asked the worker for a fresh invoice (the old one can't be
+  // paid — usually a disconnected wallet). Make that state durable and clear.
+  if ((status === "sent" || status === "expired") && requestedNew && !paymentAddress) {
+    return (
+      <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm">
+        <div className="flex items-center gap-2 font-medium text-amber-700">
+          <Send className="h-4 w-4" />
+          New invoice requested
+        </div>
+        <p className="text-muted-foreground">
+          You asked the worker to send a fresh invoice. This one can&apos;t be
+          paid — you&apos;ll be notified when the new one arrives.
+        </p>
+        {error && <p className="text-destructive">{error}</p>}
+        <div>{rejectButton}</div>
+      </div>
+    );
   }
 
   if (status === "sent" && paymentAddress) {

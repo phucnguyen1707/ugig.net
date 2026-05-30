@@ -29,6 +29,7 @@ export async function POST(
           poster_id,
           amount_usd,
           status,
+          metadata,
           gig:gigs(id, title)
         `
       )
@@ -45,6 +46,17 @@ export async function POST(
     if (invoice.poster_id !== user.id) {
       return NextResponse.json({ error: "Only the payer can request a new invoice" }, { status: 403 });
     }
+
+    // Persist that a replacement was requested so the dashboard reflects it
+    // durably (instead of looking like the invoice is still payable).
+    const nextMetadata = {
+      ...(invoice.metadata || {}),
+      replacement_requested_at: new Date().toISOString(),
+    };
+    await (supabase as any)
+      .from("gig_invoices")
+      .update({ metadata: nextMetadata, updated_at: new Date().toISOString() })
+      .eq("id", invoice.id);
 
     const gig = Array.isArray(invoice.gig) ? invoice.gig[0] : invoice.gig;
     const title = gig?.title || "your gig";

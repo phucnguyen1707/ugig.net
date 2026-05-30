@@ -54,6 +54,7 @@ interface GigInvoice {
     merchant_wallet_label?: string | null;
     checkout_url?: string | null;
     expires_at?: string | null;
+    replacement_requested_at?: string | null;
   } | null;
   worker?: { id: string; username: string; full_name?: string };
   poster?: { id: string; username: string; full_name?: string };
@@ -106,6 +107,12 @@ export function InvoiceButton({
           // Filter to this application's invoices
           const appInvoices = d.data.filter((inv: any) => inv.application_id === applicationId);
           setInvoices(appInvoices);
+          // Persisted "replacement requested" flag so the state survives reloads.
+          setRequestedNewIds(
+            appInvoices
+              .filter((inv: any) => inv.metadata?.replacement_requested_at)
+              .map((inv: any) => inv.id)
+          );
         }
       })
       .catch(() => {})

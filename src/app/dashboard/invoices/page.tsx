@@ -47,6 +47,7 @@ interface InvoiceRow {
     payment_currency?: string | null;
     checkout_url?: string | null;
     expires_at?: string | null;
+    replacement_requested_at?: string | null;
   } | null;
   created_at: string;
   gig: { id: string; title: string } | null;
@@ -265,7 +266,15 @@ export default async function InvoicesDashboardPage({
                           )}
                         </p>
                       </div>
-                      {statusBadge(inv.status)}
+                      <div className="flex flex-col items-end gap-1">
+                        {statusBadge(inv.status)}
+                        {inv.metadata?.replacement_requested_at &&
+                          isAwaitingPayment(inv.status) && (
+                            <span className="rounded bg-amber-500/10 px-2 py-0.5 text-xs text-amber-600 border border-amber-500/20">
+                              New invoice requested
+                            </span>
+                          )}
+                      </div>
                     </div>
 
                     {inv.notes && (
