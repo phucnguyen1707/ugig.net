@@ -52,6 +52,9 @@ interface InvoiceRow {
   gig: { id: string; title: string } | null;
   worker: Counterparty | null;
   poster: Counterparty | null;
+  items:
+    | { id: string; description: string | null; amount_usd: number; position: number }[]
+    | null;
 }
 
 function statusBadge(status: InvoiceRow["status"]) {
@@ -123,7 +126,8 @@ export default async function InvoicesDashboardPage({
       *,
       gig:gigs (id, title),
       worker:profiles!worker_id (id, username, full_name, avatar_url),
-      poster:profiles!poster_id (id, username, full_name, avatar_url)
+      poster:profiles!poster_id (id, username, full_name, avatar_url),
+      items:gig_invoice_items (id, description, amount_usd, position)
     `
     )
     .or(`worker_id.eq.${user.id},poster_id.eq.${user.id}`)
@@ -273,6 +277,7 @@ export default async function InvoicesDashboardPage({
                         amountUsd={Number(inv.amount_usd)}
                         currency={inv.currency}
                         gigTitle={inv.gig?.title ?? null}
+                        items={inv.items}
                         metadata={inv.metadata}
                       />
                     </div>

@@ -1,7 +1,15 @@
+interface InvoiceItem {
+  id: string;
+  description: string | null;
+  amount_usd: number;
+  position: number;
+}
+
 interface InvoiceChargesProps {
   amountUsd: number;
   currency: string;
   gigTitle: string | null;
+  items?: InvoiceItem[] | null;
   metadata: {
     amount_crypto?: string | number | null;
     payment_currency?: string | null;
@@ -9,29 +17,48 @@ interface InvoiceChargesProps {
   } | null;
 }
 
-// Itemized view of what an invoice bills. Invoices are a single amount today
-// (no separate line-items table), so this shows the one charge, the total, and
-// the live crypto quote when a payment request exists.
+// Itemized view of what an invoice bills: the line items (or a single
+// synthesized line for older invoices without items), the total, and the
+// live crypto quote when a payment request exists.
 export function InvoiceCharges({
   amountUsd,
   currency,
   gigTitle,
+  items,
   metadata,
 }: InvoiceChargesProps) {
-  const lineLabel = gigTitle ? `Work on “${gigTitle}”` : "Invoice amount";
   const crypto = metadata?.amount_crypto;
   const cryptoCurrency = metadata?.payment_currency;
+
+  const lines =
+    items && items.length > 0
+      ? [...items]
+          .sort((a, b) => a.position - b.position)
+          .map((it) => ({
+            label: it.description?.trim() || "Charge",
+            amount: Number(it.amount_usd),
+          }))
+      : [
+          {
+            label: gigTitle ? `Work on “${gigTitle}”` : "Invoice amount",
+            amount: amountUsd,
+          },
+        ];
 
   return (
     <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
       <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         Charges
       </p>
-      <div className="flex items-start justify-between gap-3 py-1">
-        <span className="text-foreground">{lineLabel}</span>
-        <span className="whitespace-nowrap font-medium tabular-nums">
-          ${amountUsd.toFixed(2)}
-        </span>
+      <div className="divide-y divide-border/60">
+        {lines.map((line, i) => (
+          <div key={i} className="flex items-start justify-between gap-3 py-1">
+            <span className="text-foreground">{line.label}</span>
+            <span className="whitespace-nowrap font-medium tabular-nums">
+              ${line.amount.toFixed(2)}
+            </span>
+          </div>
+        ))}
       </div>
       <div className="mt-2 flex items-center justify-between gap-3 border-t border-border pt-2">
         <span className="font-medium">Total</span>

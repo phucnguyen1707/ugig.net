@@ -9,15 +9,29 @@ import {
 import { invoiceReceivedEmail, sendEmail } from "@/lib/email";
 import { z } from "zod";
 
-const createInvoiceSchema = z.object({
-  application_id: z.string().uuid(),
-  amount: z.number().positive("Amount must be positive"),
-  currency: z.string().default("USD"),
-  payment_currency: z.string().optional(),
-  merchant_wallet_address: z.string().optional(),
-  notes: z.string().optional(),
-  due_date: z.string().optional(),
+const lineItemSchema = z.object({
+  description: z.string().max(500).optional().default(""),
+  amount: z.number().positive("Line item amount must be positive"),
 });
+
+const createInvoiceSchema = z
+  .object({
+    application_id: z.string().uuid(),
+    // Either a single amount (legacy) or itemized line items whose sum is the total.
+    amount: z.number().positive("Amount must be positive").optional(),
+    items: z.array(lineItemSchema).max(50).optional(),
+    currency: z.string().default("USD"),
+    payment_currency: z.string().optional(),
+    merchant_wallet_address: z.string().optional(),
+    notes: z.string().optional(),
+    due_date: z.string().optional(),
+  })
+  .refine(
+    (d) =>
+      (d.items && d.items.length > 0) ||
+      (typeof d.amount === "number" && d.amount > 0),
+    { message: "Add at least one line item or an amount", path: ["items"] }
+  );
 
 const COINPAY_WALLET_SETUP_INSTRUCTIONS = [
   "Connect your CoinPay account from OAuth Connections.",
@@ -82,12 +96,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const {
       application_id,
       amount,
+      items,
       currency,
       payment_currency,
       merchant_wallet_address,
       notes,
       due_date,
     } = validationResult.data;
+
+    // The total (amount_usd) is the authoritative amount CoinPay charges.
+    const lineItems = items ?? [];
+    const total =
+      lineItems.length > 0
+        ? Math.round(lineItems.reduce((sum, it) => sum + it.amount, 0) * 100) /
+          100
+        : (amount as number);
 
     // Get gig
     const { data: gig } = await supabase
@@ -225,7 +248,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         worker_id: workerId,
         poster_id: posterId,
         coinpay_invoice_id: null,
-        amount_usd: amount,
+        amount_usd: total,
         currency,
         status: "sent",
         pay_url: null,
@@ -247,6 +270,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Failed to create invoice" }, { status: 500 });
     }
 
+    // Persist line items (if itemized). Uses the service client; the route has
+    // already authorized the user as worker/poster for this gig.
+    if (lineItems.length > 0) {
+      const svc = createServiceClient();
+      const rows = lineItems.map((it, idx) => ({
+        invoice_id: invoice.id,
+        description: (it.description || "").slice(0, 500),
+        amount_usd: it.amount,
+        position: idx,
+      }));
+      const { error: itemsError } = await (svc as any)
+        .from("gig_invoice_items")
+        .insert(rows);
+      if (itemsError) {
+        console.error("Failed to insert invoice items:", itemsError);
+      }
+    }
+
     // Notify the counterparty
     const { data: actorProfile } = await supabase
       .from("profiles")
@@ -258,8 +299,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       actorProfile?.full_name || actorProfile?.username || (isPoster ? "The client" : "A worker");
     const recipientId = isPoster ? workerId : posterId;
     const notificationBody = isPoster
-      ? `${actorName} prepared a $${amount} payment for "${gig.title}". Open the invoice to confirm.`
-      : `${actorName} sent you a $${amount} invoice for "${gig.title}".`;
+      ? `${actorName} prepared a $${total} payment for "${gig.title}". Open the invoice to confirm.`
+      : `${actorName} sent you a $${total} invoice for "${gig.title}".`;
 
     await supabase.from("notifications").insert({
       user_id: recipientId,
@@ -290,7 +331,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             posterName,
             workerName: actorName,
             gigTitle: gig.title,
-            amountUsd: amount,
+            amountUsd: total,
             invoiceId: invoice.id,
           });
 

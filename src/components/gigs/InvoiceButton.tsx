@@ -91,7 +91,9 @@ export function InvoiceButton({
   const [walletsLoaded, setWalletsLoaded] = useState(false);
   const [oauthRequired, setOauthRequired] = useState(false);
   const [walletInstructions, setWalletInstructions] = useState<string[]>([]);
-  const [amount, setAmount] = useState(budgetAmount?.toString() || "");
+  const [items, setItems] = useState<{ description: string; amount: string }[]>([
+    { description: "", amount: budgetAmount ? budgetAmount.toString() : "" },
+  ]);
   const [notes, setNotes] = useState("");
   const [dueDate, setDueDate] = useState("");
 
@@ -143,11 +145,14 @@ export function InvoiceButton({
   }, [loadCoinpayWallets, showForm, isWorker, walletsLoaded, walletsLoading]);
 
   const handleCreateInvoice = async () => {
-    const parsedAmount = parseFloat(amount);
-    if (!parsedAmount || parsedAmount <= 0) {
-      setError("Please enter a valid amount");
+    const lineItems = items
+      .map((it) => ({ description: it.description.trim(), amount: parseFloat(it.amount) }))
+      .filter((it) => Number.isFinite(it.amount) && it.amount > 0);
+    if (lineItems.length === 0) {
+      setError("Add at least one line item with an amount");
       return;
     }
+    const total = Math.round(lineItems.reduce((s, it) => s + it.amount, 0) * 100) / 100;
 
     setIsCreating(true);
     setError(null);
@@ -165,7 +170,8 @@ export function InvoiceButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           application_id: applicationId,
-          amount: parsedAmount,
+          items: lineItems,
+          amount: total,
           currency: "USD",
           payment_currency: selectedWallet.currency,
           merchant_wallet_address: selectedWallet.address,
@@ -185,7 +191,7 @@ export function InvoiceButton({
       setInvoices((prev) => [
         {
           id: result.data.invoice_id,
-          amount_usd: parsedAmount,
+          amount_usd: total,
           currency: "USD",
           status: "sent",
           pay_url: result.data.pay_url,
@@ -205,6 +211,7 @@ export function InvoiceButton({
         ...prev,
       ]);
       setShowForm(false);
+      setItems([{ description: "", amount: "" }]);
       setNotes("");
       setDueDate("");
     } catch {
@@ -437,8 +444,8 @@ export function InvoiceButton({
 
         {isWorker && showForm && (
           <InvoiceForm
-            amount={amount}
-            setAmount={setAmount}
+            items={items}
+            setItems={setItems}
             notes={notes}
             setNotes={setNotes}
             dueDate={dueDate}
@@ -468,8 +475,8 @@ export function InvoiceButton({
     if (showForm) {
       return (
         <InvoiceForm
-          amount={amount}
-          setAmount={setAmount}
+          items={items}
+          setItems={setItems}
           notes={notes}
           setNotes={setNotes}
           dueDate={dueDate}
@@ -506,9 +513,11 @@ export function InvoiceButton({
 
 // ── Invoice Form ──
 
+type LineItem = { description: string; amount: string };
+
 function InvoiceForm({
-  amount,
-  setAmount,
+  items,
+  setItems,
   notes,
   setNotes,
   dueDate,
@@ -525,8 +534,8 @@ function InvoiceForm({
   onSubmit,
   onCancel,
 }: {
-  amount: string;
-  setAmount: (v: string) => void;
+  items: LineItem[];
+  setItems: (v: LineItem[]) => void;
   notes: string;
   setNotes: (v: string) => void;
   dueDate: string;
@@ -544,22 +553,70 @@ function InvoiceForm({
   onCancel: () => void;
 }) {
   const hasWallets = wallets.length > 0;
+  const total = items.reduce((s, it) => s + (parseFloat(it.amount) || 0), 0);
+  const updateItem = (i: number, patch: Partial<LineItem>) =>
+    setItems(items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
+  const addItem = () => setItems([...items, { description: "", amount: "" }]);
+  const removeItem = (i: number) =>
+    setItems(items.length > 1 ? items.filter((_, idx) => idx !== i) : items);
 
   return (
     <div className="border border-border rounded-lg p-4 space-y-3">
       <p className="font-medium text-sm">Create Invoice</p>
 
-      <div className="space-y-1">
-        <label className="text-xs font-medium text-muted-foreground">Amount (USD)</label>
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="0.00"
-          min="0.01"
-          step="0.01"
-          className="w-full text-sm border rounded-md px-2 py-1.5 bg-background"
-        />
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-muted-foreground">Charges</label>
+        {items.map((item, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <input
+              type="text"
+              value={item.description}
+              onChange={(e) => updateItem(i, { description: e.target.value })}
+              placeholder="Description (e.g. Logo design)"
+              className="flex-1 text-sm border rounded-md px-2 py-1.5 bg-background"
+            />
+            <div className="relative w-28 shrink-0">
+              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                $
+              </span>
+              <input
+                type="number"
+                value={item.amount}
+                onChange={(e) => updateItem(i, { amount: e.target.value })}
+                placeholder="0.00"
+                min="0.01"
+                step="0.01"
+                className="w-full text-sm border rounded-md pl-5 pr-2 py-1.5 bg-background"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => removeItem(i)}
+              disabled={items.length <= 1}
+              className="h-8 px-2 text-muted-foreground"
+              aria-label="Remove line item"
+            >
+              ✕
+            </Button>
+          </div>
+        ))}
+        <div className="flex items-center justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={addItem}
+            className="h-7 px-2 text-xs"
+          >
+            + Add line item
+          </Button>
+          <span className="text-sm">
+            Total{" "}
+            <span className="font-semibold tabular-nums">${total.toFixed(2)}</span>
+          </span>
+        </div>
       </div>
 
       <div className="space-y-1">
@@ -652,7 +709,7 @@ function InvoiceForm({
       <div className="flex gap-2">
         <Button
           onClick={onSubmit}
-          disabled={isCreating || !amount || !hasWallets}
+          disabled={isCreating || total <= 0 || !hasWallets}
           className="flex-1"
           size="sm"
         >
