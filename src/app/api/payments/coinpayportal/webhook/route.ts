@@ -328,7 +328,12 @@ async function handlePaymentForwarded(
     })
     .eq("coinpay_payment_id", paymentData.payment_id);
 
-  await updateGigInvoicePaymentMetadata(supabase, payload, "sent");
+  // A forwarded payment means the recipient (the invoice's worker) actually
+  // received their funds on-chain. Treat it as authoritative settlement for
+  // gig invoices — record the merchant_tx_hash and mark paid if a confirmed
+  // event hasn't already done so — instead of downgrading the invoice back to
+  // "sent" (which previously reverted genuinely-paid invoices).
+  if (await handleGigInvoicePaymentConfirmed(supabase, payload)) return;
   await updateBountyPaymentMetadata(supabase, payload, "invoiced");
 }
 
@@ -533,16 +538,43 @@ async function handleGigInvoicePaymentConfirmed(
 
   if (!existingInvoice) return false;
 
+  const existingMetadata = (existingInvoice.metadata || {}) as Record<string, unknown>;
+
+  // This handler runs on both payment.confirmed and payment.forwarded, so it
+  // must be idempotent. If the invoice is already settled, just fold in any
+  // new forward proof (the merchant_tx_hash arrives with the forwarded event)
+  // and skip the one-time side-effects (application completion, notifications,
+  // reputation) below.
+  if (existingInvoice.status === "paid") {
+    await (supabase as any)
+      .from("gig_invoices")
+      .update({
+        updated_at: now,
+        metadata: {
+          ...existingMetadata,
+          tx_hash: paymentData.tx_hash ?? existingMetadata.tx_hash ?? null,
+          merchant_tx_hash:
+            paymentData.merchant_tx_hash ?? existingMetadata.merchant_tx_hash ?? null,
+          forwarded_at: paymentData.merchant_tx_hash ? now : existingMetadata.forwarded_at,
+          payment_currency: paymentData.currency ?? existingMetadata.payment_currency,
+          amount_crypto: paymentData.amount_crypto ?? existingMetadata.amount_crypto,
+        },
+      })
+      .eq("id", existingInvoice.id);
+    return true;
+  }
+
   const { data: invoice } = await (supabase as any)
     .from("gig_invoices")
     .update({
       status: "paid",
       updated_at: now,
       metadata: {
-        ...((existingInvoice.metadata || {}) as Record<string, unknown>),
+        ...existingMetadata,
         tx_hash: paymentData.tx_hash,
         merchant_tx_hash: paymentData.merchant_tx_hash,
         paid_at: now,
+        forwarded_at: paymentData.merchant_tx_hash ? now : undefined,
         payment_currency: paymentData.currency,
         amount_crypto: paymentData.amount_crypto,
       },

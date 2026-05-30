@@ -15,6 +15,12 @@ vi.mock("@/lib/funding", () => ({
   FUNDING_TIERS: {},
 }));
 
+vi.mock("@/lib/reputation-hooks", () => ({
+  getUserDid: vi.fn().mockResolvedValue(null),
+  onPaymentReceived: vi.fn().mockResolvedValue(false),
+  onPaymentSent: vi.fn().mockResolvedValue(false),
+}));
+
 import { POST } from "./route";
 
 const WEBHOOK_SECRET = "test_webhook_secret_123";
@@ -328,6 +334,88 @@ describe("POST /api/payments/coinpayportal/webhook", () => {
     const req = makeRequest(payload, WEBHOOK_SECRET);
     const res = await POST(req);
     expect(res.status).toBe(200);
+  });
+
+  it("payment.forwarded settles an unpaid gig invoice to paid and records the merchant_tx_hash", async () => {
+    const payload = makeWebhookPayload("payment.forwarded", {
+      payment_id: "cp-inv-1",
+      tx_hash: "abc123",
+      merchant_tx_hash: "def456",
+      currency: "usdc_sol",
+      amount_crypto: "0.5",
+    });
+
+    const gigInvoiceChain = chainResult({
+      data: {
+        id: "inv-1",
+        status: "sent",
+        application_id: "app-1",
+        gig_id: "gig-1",
+        worker_id: "worker-1",
+        poster_id: "poster-1",
+        amount_usd: 10,
+        metadata: { merchant_wallet_address: "WorkerWallet" },
+      },
+      error: null,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "gig_invoices") return gigInvoiceChain;
+      return chainResult({ data: null, error: null });
+    });
+
+    const res = await POST(makeRequest(payload, WEBHOOK_SECRET));
+    expect(res.status).toBe(200);
+    // It must flip the invoice to paid (not revert to "sent") and store proof.
+    expect(gigInvoiceChain.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "paid",
+        metadata: expect.objectContaining({ merchant_tx_hash: "def456" }),
+      })
+    );
+  });
+
+  it("payment.forwarded is idempotent on an already-paid invoice (records proof, no duplicate side-effects)", async () => {
+    const payload = makeWebhookPayload("payment.forwarded", {
+      payment_id: "cp-inv-2",
+      tx_hash: "abc123",
+      merchant_tx_hash: "def456",
+    });
+
+    const gigInvoiceChain = chainResult({
+      data: {
+        id: "inv-2",
+        status: "paid",
+        application_id: "app-2",
+        gig_id: "gig-2",
+        worker_id: "worker-2",
+        poster_id: "poster-2",
+        amount_usd: 10,
+        metadata: { paid_at: "2026-05-30T00:00:00Z" },
+      },
+      error: null,
+    });
+    const notifChain = chainResult({ data: null, error: null });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "gig_invoices") return gigInvoiceChain;
+      if (table === "notifications") return notifChain;
+      return chainResult({ data: null, error: null });
+    });
+
+    const res = await POST(makeRequest(payload, WEBHOOK_SECRET));
+    expect(res.status).toBe(200);
+    // Records the forward proof...
+    expect(gigInvoiceChain.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ merchant_tx_hash: "def456" }),
+      })
+    );
+    // ...but does NOT re-flip status or re-notify.
+    expect(gigInvoiceChain.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ status: "paid" })
+    );
+    expect(notifChain.insert).not.toHaveBeenCalled();
   });
 
   it("uses service client (not cookie-based auth)", async () => {
