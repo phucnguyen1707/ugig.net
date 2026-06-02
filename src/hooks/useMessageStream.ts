@@ -50,17 +50,19 @@ export function useMessageStream(
     onTypingChangeRef.current = onTypingChange;
   }, [onTypingChange]);
 
+  // eslint-disable-next-line react-hooks/refs
+  const currentStreamId = streamIdRef.current;
   const isConnected =
-    conversationId !== null && connectedStreamId === streamIdRef.current;
+    conversationId !== null && connectedStreamId === currentStreamId;
   const error =
     connectionError?.conversationId === conversationId &&
-    connectionError.streamId === streamIdRef.current
+    connectionError.streamId === currentStreamId
       ? connectionError.error
       : null;
   const isOtherTyping =
     conversationId !== null &&
     otherTypingState.conversationId === conversationId &&
-    otherTypingState.streamId === streamIdRef.current &&
+    otherTypingState.streamId === currentStreamId &&
     otherTypingState.isTyping;
 
   // Poll for typing status

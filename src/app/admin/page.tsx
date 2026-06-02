@@ -50,6 +50,16 @@ export default async function AdminPage() {
       </div>
 
       <section className="rounded-lg border bg-card p-6">
+        <h2 className="text-lg font-semibold">Email broadcast</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Send a mass email to all registered users.</p>
+        <div className="mt-4">
+          <Link href="/admin/email-broadcast" className="text-sm font-semibold underline hover:opacity-80">
+            Compose &amp; send →
+          </Link>
+        </div>
+      </section>
+
+      <section className="rounded-lg border bg-card p-6">
         <h2 className="text-lg font-semibold">Autoblog integrations</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Each bearer token doubles as the HMAC secret for the Standard

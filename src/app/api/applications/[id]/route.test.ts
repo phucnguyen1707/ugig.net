@@ -21,7 +21,7 @@ describe("DELETE /api/applications/[id]", () => {
       new Response(JSON.stringify({ application: { status: "withdrawn" } }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      })
+      }) as any
     );
 
     const request = new NextRequest(

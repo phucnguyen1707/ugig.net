@@ -40,7 +40,7 @@ function chainable(data: unknown, error: unknown = null, count: number | null = 
   return new Proxy(result, handler);
 }
 
-function offerListChain(rangeSpy: ReturnType<typeof vi.fn>) {
+function offerListChain(rangeSpy: (...args: any[]) => any) {
   const queryChain: Record<string, any> = {};
   const chainHandler: ProxyHandler<any> = {
     get(_target, prop) {
@@ -120,7 +120,7 @@ describe("GET /api/affiliates/offers", () => {
   });
 
   it("clamps invalid pagination values before querying", async () => {
-    const rangeSpy = vi.fn();
+    const rangeSpy = vi.fn() as unknown as (...args: any[]) => any;
     mockFrom.mockReturnValue(offerListChain(rangeSpy));
 
     const res = await GET(makeRequest({ page: "abc", limit: "-5" }));
@@ -133,7 +133,7 @@ describe("GET /api/affiliates/offers", () => {
   });
 
   it("caps huge pagination values before querying", async () => {
-    const rangeSpy = vi.fn();
+    const rangeSpy = vi.fn() as unknown as (...args: any[]) => any;
     mockFrom.mockReturnValue(offerListChain(rangeSpy));
 
     const res = await GET(makeRequest({ page: "1e308", limit: "999" }));
