@@ -77,4 +77,22 @@ describe("GET /api/leaderboard/zaps", () => {
     expect(response.status).toBe(200);
     expect(json.leaderboard).toHaveLength(2);
   });
+
+  it("rejects unsupported period values before querying", async () => {
+    const response = await GET(makeRequest({ period: "year" }));
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toBe("Invalid period. Must be: week, month, or all");
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported sort values before querying", async () => {
+    const response = await GET(makeRequest({ sort: "top" }));
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toBe("Invalid sort. Must be: received or sent");
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
 });

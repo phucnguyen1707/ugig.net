@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
+const VALID_PERIODS = ["week", "month", "all"] as const;
+const VALID_SORTS = ["received", "sent"] as const;
+
 /**
  * GET /api/leaderboard/zaps?period=week|month|all&sort=received|sent&limit=25
  * Public endpoint - no auth required.
@@ -10,6 +13,21 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const period = url.searchParams.get("period") || "all";
     const sort = url.searchParams.get("sort") || "received";
+
+    if (!VALID_PERIODS.includes(period as (typeof VALID_PERIODS)[number])) {
+      return NextResponse.json(
+        { error: "Invalid period. Must be: week, month, or all" },
+        { status: 400 }
+      );
+    }
+
+    if (!VALID_SORTS.includes(sort as (typeof VALID_SORTS)[number])) {
+      return NextResponse.json(
+        { error: "Invalid sort. Must be: received or sent" },
+        { status: 400 }
+      );
+    }
+
     const parsedLimit = parseInt(url.searchParams.get("limit") || "25", 10);
     const limit = Number.isFinite(parsedLimit)
       ? Math.min(Math.max(parsedLimit, 1), 50)
