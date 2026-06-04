@@ -112,7 +112,7 @@ export function AddParticipantDialog({
       </Button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-72 bg-popover border border-border rounded-lg shadow-lg z-50 p-3">
+        <div className="absolute right-0 top-10 w-72 bg-card border border-border rounded-lg shadow-xl z-50 p-3" style={{ backdropFilter: "none" }}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Add to conversation</span>
             <button
@@ -131,7 +131,7 @@ export function AddParticipantDialog({
               placeholder="Search by username..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-sm bg-muted/50 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground"
+              className="w-full pl-8 pr-3 py-1.5 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground"
             />
           </div>
 
