@@ -2,116 +2,126 @@ import type { MetadataRoute } from "next";
 import { buildSitemapBlogEntries } from "@profullstack/autoblog/feeds";
 import { createServiceClient } from "@/lib/supabase/service";
 
-// Force dynamic rendering so sitemap is fresh on every request
-export const dynamic = "force-dynamic";
-export const revalidate = 3600; // revalidate every hour
+export const revalidate = 3600; // regenerate at most once per hour (ISR)
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://ugig.net";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const staticPages = getStaticPages();
+
   let supabase;
   try {
     supabase = createServiceClient();
   } catch {
-    // If service client fails (missing env), return static pages only
-    return getStaticPages();
+    return staticPages;
   }
 
-  // Static pages
-  const staticPages = getStaticPages();
+  try {
+    // Run all queries in parallel to cut total latency
+    const [
+      { data: gigs },
+      { data: skills },
+      { data: users },
+      { data: posts },
+      { data: affiliateOffers },
+      { data: blogPosts },
+    ] = await Promise.all([
+      supabase
+        .from("gigs" as any)
+        .select("id, updated_at")
+        .eq("status", "active")
+        .order("updated_at", { ascending: false })
+        .limit(1000),
+      supabase
+        .from("skill_listings" as any)
+        .select("slug, updated_at")
+        .eq("status", "active")
+        .order("updated_at", { ascending: false })
+        .limit(1000),
+      supabase
+        .from("profiles" as any)
+        .select("username, updated_at")
+        .not("username", "is", null)
+        .order("updated_at", { ascending: false })
+        .limit(2000),
+      supabase
+        .from("posts" as any)
+        .select("id, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(1000),
+      supabase
+        .from("affiliate_offers" as any)
+        .select("slug, updated_at")
+        .eq("status", "active")
+        .order("updated_at", { ascending: false })
+        .limit(1000),
+      supabase
+        .from("blog_posts" as any)
+        .select("slug, published_at")
+        .order("published_at", { ascending: false })
+        .limit(500),
+    ]);
 
-  // Dynamic: Active gigs
-  const { data: gigs } = await supabase
-    .from("gigs" as any)
-    .select("id, updated_at")
-    .eq("status", "active")
-    .order("updated_at", { ascending: false })
-    .limit(1000);
+    const safeDate = (v: string | null | undefined) =>
+      v ? new Date(v) : new Date();
 
-  const gigPages: MetadataRoute.Sitemap = (gigs || []).map((gig: any) => ({
-    url: `${BASE_URL}/gigs/${gig.id}`,
-    lastModified: new Date(gig.updated_at),
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
-  }));
+    const gigPages: MetadataRoute.Sitemap = (gigs || []).map((gig: any) => ({
+      url: `${BASE_URL}/gigs/${gig.id}`,
+      lastModified: safeDate(gig.updated_at),
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
 
-  // Dynamic: Active skill listings
-  const { data: skills } = await supabase
-    .from("skill_listings" as any)
-    .select("slug, updated_at")
-    .eq("status", "active")
-    .order("updated_at", { ascending: false })
-    .limit(1000);
+    const skillPages: MetadataRoute.Sitemap = (skills || []).map((skill: any) => ({
+      url: `${BASE_URL}/skills/${skill.slug}`,
+      lastModified: safeDate(skill.updated_at),
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
 
-  const skillPages: MetadataRoute.Sitemap = (skills || []).map((skill: any) => ({
-    url: `${BASE_URL}/skills/${skill.slug}`,
-    lastModified: new Date(skill.updated_at),
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
-  }));
+    const userPages: MetadataRoute.Sitemap = (users || []).map((user: any) => ({
+      url: `${BASE_URL}/u/${user.username}`,
+      lastModified: safeDate(user.updated_at),
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    }));
 
-  // Dynamic: Public user profiles
-  const { data: users } = await supabase
-    .from("profiles" as any)
-    .select("username, updated_at")
-    .not("username", "is", null)
-    .order("updated_at", { ascending: false })
-    .limit(2000);
+    const postPages: MetadataRoute.Sitemap = (posts || []).map((post: any) => ({
+      url: `${BASE_URL}/post/${post.id}`,
+      lastModified: safeDate(post.updated_at),
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    }));
 
-  const userPages: MetadataRoute.Sitemap = (users || []).map((user: any) => ({
-    url: `${BASE_URL}/u/${user.username}`,
-    lastModified: new Date(user.updated_at),
-    changeFrequency: "weekly" as const,
-    priority: 0.6,
-  }));
+    const affiliatePages: MetadataRoute.Sitemap = (affiliateOffers || []).map((offer: any) => ({
+      url: `${BASE_URL}/affiliates/${offer.slug}`,
+      lastModified: safeDate(offer.updated_at),
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    }));
 
-  // Dynamic: Public posts (no status filter — all posts are public)
-  const { data: posts } = await supabase
-    .from("posts" as any)
-    .select("id, updated_at")
-    .order("updated_at", { ascending: false })
-    .limit(1000);
+    const blogPages = buildSitemapBlogEntries({
+      posts: ((blogPosts as unknown) as Array<{ slug: string; published_at: string }> | null ?? []).map((p) => ({
+        slug: p.slug,
+        title: p.slug,
+        publishedAt: p.published_at,
+      })),
+      baseUrl: BASE_URL,
+    });
 
-  const postPages: MetadataRoute.Sitemap = (posts || []).map((post: any) => ({
-    url: `${BASE_URL}/post/${post.id}`,
-    lastModified: new Date(post.updated_at),
-    changeFrequency: "monthly" as const,
-    priority: 0.5,
-  }));
-
-
-  // Dynamic: Active affiliate offers
-  const { data: affiliateOffers } = await supabase
-    .from("affiliate_offers" as any)
-    .select("slug, updated_at")
-    .eq("status", "active")
-    .order("updated_at", { ascending: false })
-    .limit(1000);
-
-  const affiliatePages: MetadataRoute.Sitemap = (affiliateOffers || []).map((offer: any) => ({
-    url: `${BASE_URL}/affiliates/${offer.slug}`,
-    lastModified: new Date(offer.updated_at),
-    changeFrequency: "weekly" as const,
-    priority: 0.6,
-  }));
-
-  // Dynamic: Blog posts (autoblog ingest)
-  const { data: blogPosts } = await supabase
-    .from("blog_posts" as any)
-    .select("slug, published_at")
-    .order("published_at", { ascending: false })
-    .limit(500);
-
-  const blogPages = buildSitemapBlogEntries({
-    posts: ((blogPosts as unknown) as Array<{ slug: string; published_at: string }> | null ?? []).map((p) => ({
-      slug: p.slug,
-      title: p.slug,
-      publishedAt: p.published_at,
-    })),
-    baseUrl: BASE_URL,
-  });
-
-  return [...staticPages, ...gigPages, ...skillPages, ...userPages, ...postPages, ...affiliatePages, ...blogPages];
+    return [
+      ...staticPages,
+      ...gigPages,
+      ...skillPages,
+      ...userPages,
+      ...postPages,
+      ...affiliatePages,
+      ...blogPages,
+    ];
+  } catch {
+    // Fall back to static pages if any DB query fails
+    return staticPages;
+  }
 }
 
 function getStaticPages(): MetadataRoute.Sitemap {
