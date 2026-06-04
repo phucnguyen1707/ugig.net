@@ -139,6 +139,7 @@ export function PostCard({ post: initialPost, showFollowButtons, followedTags, e
       role="link"
       tabIndex={0}
       onKeyDown={(e) => {
+        if (isEditing) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           handleCardClick();
