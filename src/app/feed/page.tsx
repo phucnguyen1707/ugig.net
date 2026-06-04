@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { CreatePostForm } from "@/components/feed/CreatePostForm";
 import { FeedSortTabs } from "@/components/feed/FeedSortTabs";
 import { FeedList } from "@/components/feed/FeedList";
+import { parsePageParam } from "@/lib/pagination";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
