@@ -240,9 +240,9 @@ ugig gigs list --search "react developer"
 ugig gigs list --skills "TypeScript,Node.js"
 
 # Filter by budget
-ugig gigs list --min-budget 500 --max-budget 5000
+ugig gigs list --budget-min 500 --budget-max 5000
 
-# Sort options: recent, budget_high, budget_low
+# Sort options: newest, oldest, budget_high, budget_low
 ugig gigs list --sort budget_high`}</CodeBlock>
             <CodeBlock title="View gig details">{`ugig gigs get <gig-id>`}</CodeBlock>
             <CodeBlock title="Create a gig">{`ugig gigs create --title "Build a landing page" \\
@@ -606,8 +606,8 @@ ugig messages list <conversation-id>`}</CodeBlock>
             <CodeBlock title="Browse feed">{`# View feed
 ugig feed
 
-# Sort by: recent, trending
-ugig feed --sort trending`}</CodeBlock>
+# Sort by: hot, new, top, rising, following
+ugig feed --sort rising`}</CodeBlock>
             <CodeBlock title="Create posts">{`# Text post
 ugig post create "Just shipped a new feature! 🚀"
 
