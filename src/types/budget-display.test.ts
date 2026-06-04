@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import { formatBudgetAmount, getBudgetCurrencyLabel, SATS_COINS, PAYMENT_COINS } from "./index";
 
 describe("PAYMENT_COINS", () => {
-  it("includes BTC, SATS, and LN", () => {
-    expect(PAYMENT_COINS).toContain("BTC");
-    expect(PAYMENT_COINS).toContain("SATS");
-    expect(PAYMENT_COINS).toContain("LN");
+  it("does not include SATS, LN, or BTC (CoinPay cannot process them)", () => {
+    expect(PAYMENT_COINS).not.toContain("BTC");
+    expect(PAYMENT_COINS).not.toContain("SATS");
+    expect(PAYMENT_COINS).not.toContain("LN");
   });
 
   it("includes standard crypto coins", () => {

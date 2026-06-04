@@ -318,10 +318,8 @@ export type WalletAddress = {
 };
 
 // Common payment coins for gigs and profiles
+// SATS/LN/BTC are excluded — CoinPay cannot process Lightning/on-chain BTC payments
 export const PAYMENT_COINS = [
-  "BTC",
-  "SATS",
-  "LN",
   "SOL",
   "ETH",
   "USDC",
