@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MessageBubble } from "./MessageBubble";
 import { MessageInput } from "./MessageInput";
 import { TypingIndicator } from "./TypingIndicator";
+import { AddParticipantDialog } from "./AddParticipantDialog";
 import { StartVideoCallButton } from "@/components/video/StartVideoCallButton";
 import { useMessageStream } from "@/hooks/useMessageStream";
 import type { MessageWithSender, Profile, Gig, Attachment } from "@/types";
@@ -24,25 +25,26 @@ interface MessageThreadProps {
 export function MessageThread({
   conversationId,
   currentUserId,
-  participants,
+  participants: initialParticipants,
   gig,
 }: MessageThreadProps) {
   const router = useRouter();
   const [messages, setMessages] = useState<MessageWithSender[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [participants, setParticipants] = useState(initialParticipants);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Get the other participant
-  const otherParticipant = participants.find((p) => p.id !== currentUserId);
-  const otherInitials = (
-    otherParticipant?.full_name ||
-    otherParticipant?.username ||
-    "U"
-  )
-    .charAt(0)
-    .toUpperCase();
+  const otherParticipants = participants.filter((p) => p.id !== currentUserId);
+  const isGroup = otherParticipants.length > 1;
+
+  // For 1:1 read receipts
+  const otherParticipant = isGroup ? undefined : otherParticipants[0];
+
+  const groupDisplayName = otherParticipants
+    .map((p) => p.full_name || p.username)
+    .join(", ");
 
   // Handle incoming messages from SSE
   const handleNewMessage = useCallback((message: MessageWithSender) => {
@@ -192,24 +194,61 @@ export function MessageThread({
           <ArrowLeft className="h-4 w-4" />
         </Button>
 
-        <Avatar className="h-10 w-10">
-          {otherParticipant?.avatar_url ? (
-            <AvatarImage
-              src={otherParticipant.avatar_url}
-              alt={otherParticipant.full_name || otherParticipant.username}
-            />
-          ) : (
-            <AvatarFallback>{otherInitials}</AvatarFallback>
-          )}
-        </Avatar>
+        {/* Avatar(s) */}
+        {isGroup ? (
+          <div className="relative flex-shrink-0 flex items-center" style={{ width: 40, height: 40 }}>
+            {otherParticipants.slice(0, 3).map((p, i) => {
+              const initials = (p.full_name || p.username || "U").charAt(0).toUpperCase();
+              const size = otherParticipants.length === 2 ? 28 : 24;
+              const offsets = otherParticipants.length === 2
+                ? [{ top: 0, left: 0 }, { top: 12, left: 12 }]
+                : [{ top: 0, left: 0 }, { top: 10, left: 10 }, { top: 20, left: 20 }];
+              return (
+                <Avatar
+                  key={p.id}
+                  className="absolute border-2 border-card"
+                  style={{
+                    width: size,
+                    height: size,
+                    top: offsets[i]?.top ?? 0,
+                    left: offsets[i]?.left ?? 0,
+                  }}
+                >
+                  {p.avatar_url ? (
+                    <AvatarImage src={p.avatar_url} alt={p.full_name || p.username} />
+                  ) : (
+                    <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+                  )}
+                </Avatar>
+              );
+            })}
+          </div>
+        ) : (
+          <Avatar className="h-10 w-10 flex-shrink-0">
+            {otherParticipant?.avatar_url ? (
+              <AvatarImage
+                src={otherParticipant.avatar_url}
+                alt={otherParticipant.full_name || otherParticipant.username}
+              />
+            ) : (
+              <AvatarFallback>
+                {(otherParticipant?.full_name || otherParticipant?.username || "U").charAt(0).toUpperCase()}
+              </AvatarFallback>
+            )}
+          </Avatar>
+        )}
 
         <div className="flex-1 min-w-0">
-          <Link
-            href={`/u/${otherParticipant?.username}`}
-            className="font-medium hover:underline truncate block"
-          >
-            {otherParticipant?.full_name || otherParticipant?.username}
-          </Link>
+          {isGroup ? (
+            <p className="font-medium truncate">{groupDisplayName}</p>
+          ) : (
+            <Link
+              href={`/u/${otherParticipant?.username}`}
+              className="font-medium hover:underline truncate block"
+            >
+              {otherParticipant?.full_name || otherParticipant?.username}
+            </Link>
+          )}
           {gig && (
             <Link
               href={`/gigs/${gig.id}`}
@@ -221,8 +260,15 @@ export function MessageThread({
           )}
         </div>
 
-        {/* Video call button */}
-        {otherParticipant && (
+        {/* Add participant */}
+        <AddParticipantDialog
+          conversationId={conversationId}
+          existingParticipantIds={participants.map((p) => p.id)}
+          onParticipantAdded={(p) => setParticipants((prev) => [...prev, p])}
+        />
+
+        {/* Video call — only for 1:1 */}
+        {!isGroup && otherParticipant && (
           <StartVideoCallButton
             participantId={otherParticipant.id}
             gigId={gig?.id}
@@ -290,7 +336,7 @@ export function MessageThread({
                     message={message}
                     isOwn={isOwn}
                     showAvatar={showAvatar}
-                    otherParticipantId={otherParticipant?.id}
+                    otherParticipantId={isGroup ? undefined : otherParticipant?.id}
                   />
                 );
               })}
@@ -305,7 +351,7 @@ export function MessageThread({
       {isOtherTyping && (
         <div className="px-4 py-2 border-t border-border bg-card/50">
           <TypingIndicator
-            userName={otherParticipant?.full_name || otherParticipant?.username}
+            userName={isGroup ? "Someone" : (otherParticipant?.full_name || otherParticipant?.username)}
           />
         </div>
       )}

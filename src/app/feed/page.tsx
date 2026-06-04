@@ -1,4 +1,3 @@
-import { parsePageParam } from "@/lib/pagination";
 /* eslint-disable react-hooks/purity */
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";

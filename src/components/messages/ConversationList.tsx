@@ -91,27 +91,21 @@ export function ConversationList({ currentUserId }: ConversationListProps) {
     }
   };
 
-  // Filter conversations by search query (username, full_name, gig title, last message)
+  // Filter conversations by search query (username, full_name of all participants, gig title, last message)
   const filteredConversations = searchQuery.trim()
     ? conversations.filter((conv) => {
         const q = searchQuery.toLowerCase();
-        const otherParticipant = conv.participants.find(
+        const otherParticipants = conv.participants.filter(
           (p) => p.id !== currentUserId
         );
-        const name = (
-          otherParticipant?.full_name ||
-          otherParticipant?.username ||
-          ""
-        ).toLowerCase();
-        const username = (otherParticipant?.username || "").toLowerCase();
+        const matchesParticipant = otherParticipants.some((p) => {
+          const name = (p.full_name || p.username || "").toLowerCase();
+          const uname = (p.username || "").toLowerCase();
+          return name.includes(q) || uname.includes(q);
+        });
         const gigTitle = (conv.gig?.title || "").toLowerCase();
         const lastMsg = (conv.last_message?.content || "").toLowerCase();
-        return (
-          name.includes(q) ||
-          username.includes(q) ||
-          gigTitle.includes(q) ||
-          lastMsg.includes(q)
-        );
+        return matchesParticipant || gigTitle.includes(q) || lastMsg.includes(q);
       })
     : conversations;
 
@@ -239,16 +233,15 @@ export function ConversationList({ currentUserId }: ConversationListProps) {
       ) : null}
       <div className="divide-y divide-border">
         {filteredConversations.map((conv) => {
-          const otherParticipant = conv.participants.find(
+          const otherParticipants = conv.participants.filter(
             (p) => p.id !== currentUserId
           );
-          const initials = (
-            otherParticipant?.full_name ||
-            otherParticipant?.username ||
-            "U"
-          )
-            .charAt(0)
-            .toUpperCase();
+          const primaryParticipant = otherParticipants[0];
+          const isGroup = otherParticipants.length > 1;
+          const displayName = isGroup
+            ? otherParticipants.map((p) => p.full_name || p.username).join(", ")
+            : (primaryParticipant?.full_name || primaryParticipant?.username || "");
+          const initials = (displayName || "U").charAt(0).toUpperCase();
 
           const isActive = pathname === `/dashboard/messages/${conv.id}`;
           const hasUnread = conv.unread_count > 0;
@@ -262,36 +255,54 @@ export function ConversationList({ currentUserId }: ConversationListProps) {
                   isActive && "bg-muted"
                 )}
               >
-                <span
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    window.open(`/u/${otherParticipant?.username}`, "_blank");
-                  }}
-                  className="relative flex-shrink-0 cursor-pointer"
-                >
-                  <Avatar className="h-10 w-10">
-                    {otherParticipant?.avatar_url ? (
-                      <AvatarImage
-                        src={otherParticipant.avatar_url}
-                        alt={
-                          otherParticipant.full_name ||
-                          otherParticipant.username
-                        }
-                      />
-                    ) : (
-                      <AvatarFallback>{initials}</AvatarFallback>
+                {/* Avatar — stacked for group, single for DM */}
+                {isGroup ? (
+                  <span className="relative flex-shrink-0" style={{ width: 40, height: 40 }}>
+                    {otherParticipants.slice(0, 2).map((p, i) => (
+                      <Avatar
+                        key={p.id}
+                        className="absolute border-2 border-card"
+                        style={{ width: 28, height: 28, top: i * 12, left: i * 12 }}
+                      >
+                        {p.avatar_url ? (
+                          <AvatarImage src={p.avatar_url} alt={p.full_name || p.username} />
+                        ) : (
+                          <AvatarFallback className="text-[10px]">
+                            {(p.full_name || p.username || "U").charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                    ))}
+                  </span>
+                ) : (
+                  <span
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      window.open(`/u/${primaryParticipant?.username}`, "_blank");
+                    }}
+                    className="relative flex-shrink-0 cursor-pointer"
+                  >
+                    <Avatar className="h-10 w-10">
+                      {primaryParticipant?.avatar_url ? (
+                        <AvatarImage
+                          src={primaryParticipant.avatar_url}
+                          alt={primaryParticipant.full_name || primaryParticipant.username}
+                        />
+                      ) : (
+                        <AvatarFallback>{initials}</AvatarFallback>
+                      )}
+                    </Avatar>
+                    {primaryParticipant?.account_type === "agent" && (
+                      <span
+                        className="absolute -bottom-0.5 -right-0.5 bg-purple-500 text-white rounded-full p-0.5"
+                        title="AI Agent"
+                      >
+                        <Bot className="h-2.5 w-2.5" />
+                      </span>
                     )}
-                  </Avatar>
-                  {otherParticipant?.account_type === "agent" && (
-                    <span
-                      className="absolute -bottom-0.5 -right-0.5 bg-purple-500 text-white rounded-full p-0.5"
-                      title="AI Agent"
-                    >
-                      <Bot className="h-2.5 w-2.5" />
-                    </span>
-                  )}
-                </span>
+                  </span>
+                )}
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
@@ -301,10 +312,9 @@ export function ConversationList({ currentUserId }: ConversationListProps) {
                         hasUnread && "font-semibold"
                       )}
                     >
-                      {otherParticipant?.full_name ||
-                        otherParticipant?.username}
+                      {displayName}
                     </span>
-                    {otherParticipant?.account_type === "agent" && (
+                    {!isGroup && primaryParticipant?.account_type === "agent" && (
                       <Badge
                         variant="secondary"
                         className="text-[10px] px-1.5 py-0 bg-purple-500/10 text-purple-500 border-purple-500/20"
