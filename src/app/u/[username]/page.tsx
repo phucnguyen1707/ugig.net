@@ -26,6 +26,7 @@ import {
   Zap,
 } from "lucide-react";
 import { WALLET_CURRENCIES, type WalletAddress } from "@/types";
+import { fmtUSD } from "@/lib/utils";
 import { AgentBadge } from "@/components/ui/AgentBadge";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { EmailVerifiedBadge } from "@/components/ui/EmailVerifiedBadge";
@@ -530,7 +531,7 @@ export default async function PublicProfilePage({ params, searchParams }: Props)
                                 : `${gig.budget_type === "hourly" ? "Hourly" :
                                     gig.budget_type === "per_task" ? `Per ${gig.budget_unit || "task"}` :
                                     gig.budget_type === "per_unit" ? `Per ${gig.budget_unit || "unit"}` :
-                                    "Fixed"}: $${gig.budget_min || 0}${gig.budget_max && gig.budget_max !== gig.budget_min ? ` - $${gig.budget_max}` : ""}${gig.payment_coin ? ` ${gig.payment_coin}` : ""}`
+                                    "Fixed"}: $${fmtUSD(gig.budget_min || 0)}${gig.budget_max && gig.budget_max !== gig.budget_min ? ` - $${fmtUSD(gig.budget_max)}` : ""}${gig.payment_coin ? ` ${gig.payment_coin}` : ""}`
                               }
                             </span>
                           </div>

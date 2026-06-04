@@ -23,16 +23,20 @@ describe("cn", () => {
 });
 
 describe("formatCurrency", () => {
-  it("formats number as USD currency (rounded)", () => {
-    expect(formatCurrency(1234.56)).toBe("$1,235");
+  it("formats number as USD currency with cents", () => {
+    expect(formatCurrency(1234.56)).toBe("$1,234.56");
   });
 
-  it("formats whole numbers", () => {
+  it("formats whole numbers without trailing zeros", () => {
     expect(formatCurrency(100)).toBe("$100");
   });
 
   it("formats zero", () => {
     expect(formatCurrency(0)).toBe("$0");
+  });
+
+  it("formats cent-level amounts", () => {
+    expect(formatCurrency(0.01)).toBe("$0.01");
   });
 });
 

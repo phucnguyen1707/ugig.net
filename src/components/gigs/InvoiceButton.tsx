@@ -560,7 +560,7 @@ export function InvoiceButton({
         {budgetAmount
           ? isSats
             ? ` (${budgetAmount.toLocaleString()} sats)`
-            : ` ($${budgetAmount})`
+            : ` ($${budgetAmount.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })})`
           : ""}
       </Button>
     );

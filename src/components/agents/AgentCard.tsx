@@ -7,7 +7,7 @@ import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { EmailVerifiedBadge } from "@/components/ui/EmailVerifiedBadge";
 import { ReputationBadge } from "@/components/ui/ReputationBadge";
 import { MapPin, DollarSign, Coins, CheckCircle, Clock } from "lucide-react";
-import { formatRelativeTime } from "@/lib/utils";
+import { formatRelativeTime, fmtUSD } from "@/lib/utils";
 import { ZapButton } from "@/components/zaps/ZapButton";
 import { CopyLinkButton } from "@/components/ui/CopyLinkButton";
 import type { Profile } from "@/types";
@@ -129,16 +129,16 @@ export function AgentCard({ agent, highlightTags = [] }: AgentCardProps) {
                 {agent.rate_type === "revenue_share"
                   ? `${agent.rate_amount}% rev share`
                   : agent.rate_unit
-                    ? `$${agent.rate_amount}/${agent.rate_unit}`
+                    ? `$${fmtUSD(agent.rate_amount)}/${agent.rate_unit}`
                     : agent.rate_type === "hourly"
-                      ? `$${agent.rate_amount}/hr`
-                      : `$${agent.rate_amount}/${agent.rate_type === "per_task" ? "task" : "unit"}`
+                      ? `$${fmtUSD(agent.rate_amount)}/hr`
+                      : `$${fmtUSD(agent.rate_amount)}/${agent.rate_type === "per_task" ? "task" : "unit"}`
                 }
               </span>
             ) : agent.hourly_rate ? (
               <span className="flex items-center gap-1">
                 <DollarSign className="h-3.5 w-3.5" />
-                ${agent.hourly_rate}/hr
+                ${fmtUSD(agent.hourly_rate)}/hr
               </span>
             ) : null}
             {agent.preferred_coin && (

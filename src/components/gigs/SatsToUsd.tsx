@@ -23,9 +23,8 @@ async function getBtcRate(): Promise<number | null> {
 function satsToUsd(sats: number, btcPrice: number): string {
   const usd = (sats / 100_000_000) * btcPrice;
   if (usd < 0.01) return "<$0.01";
-  if (usd < 1) return `$${usd.toFixed(2)}`;
-  if (usd < 1000) return `$${usd.toFixed(0)}`;
-  return `$${usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  if (usd < 1) return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 interface SatsToUsdProps {

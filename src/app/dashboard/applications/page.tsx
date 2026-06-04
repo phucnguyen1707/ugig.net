@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ExternalLink, Clock, DollarSign, Calendar, FileText } from "lucide-react";
+import { fmtUSD } from "@/lib/utils";
 
 export const metadata = {
   title: "My Applications | ugig.net",
@@ -190,10 +191,10 @@ export default async function MyApplicationsPage() {
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                             <span>
                               {gig.budget_min && gig.budget_max
-                                ? `$${gig.budget_min} - $${gig.budget_max}`
+                                ? `$${fmtUSD(gig.budget_min)} - $${fmtUSD(gig.budget_max)}`
                                 : gig.budget_min
-                                ? `$${gig.budget_min}+`
-                                : `Up to $${gig.budget_max}`}
+                                ? `$${fmtUSD(gig.budget_min)}+`
+                                : `Up to $${fmtUSD(gig.budget_max)}`}
                               {gig.budget_type === "hourly" ? "/hr" :
                                gig.budget_type === "per_task" ? `/${gig.budget_unit || "task"}` :
                                gig.budget_type === "per_unit" ? `/${gig.budget_unit || "unit"}` :

@@ -10,8 +10,13 @@ export function formatCurrency(amount: number): string {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(amount);
+}
+
+export function fmtUSD(amount: number | null | undefined): string {
+  if (amount == null) return "";
+  return amount.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 export function formatDate(date: string | Date): string {

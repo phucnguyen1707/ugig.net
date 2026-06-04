@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GigActions } from "@/components/gigs/GigActions";
+import { fmtUSD } from "@/lib/utils";
 import {
   PendingApplicantsDropdown,
   type PendingApplication,
@@ -195,11 +196,11 @@ export default async function MyGigsPage({ searchParams }: MyGigsPageProps) {
 
                   <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-4 text-center">
                     <div>
-                      <p className="text-lg font-semibold">{gig.budget_min ? `$${gig.budget_min}` : "-"}</p>
+                      <p className="text-lg font-semibold">{gig.budget_min ? `$${fmtUSD(gig.budget_min)}` : "-"}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">Min Budget</p>
                     </div>
                     <div>
-                      <p className="text-lg font-semibold">{gig.budget_max ? `$${gig.budget_max}` : "-"}</p>
+                      <p className="text-lg font-semibold">{gig.budget_max ? `$${fmtUSD(gig.budget_max)}` : "-"}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">Max Budget</p>
                     </div>
                     <div>

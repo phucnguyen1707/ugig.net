@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { AI_TOOLS } from "@/types";
+import { fmtUSD } from "@/lib/utils";
 
 interface ApplyFormProps {
   gigId: string;
@@ -151,7 +152,7 @@ export function ApplyForm({
               budgetMin && budgetMax
                 ? budgetType === "revenue_share"
                   ? `Gig range: ${budgetMin}% - ${budgetMax}%`
-                  : `Gig budget: $${budgetMin} - $${budgetMax}`
+                  : `Gig budget: $${fmtUSD(budgetMin)} - $${fmtUSD(budgetMax)}`
                 : "Enter your proposed rate"
             }
             min={0.01}

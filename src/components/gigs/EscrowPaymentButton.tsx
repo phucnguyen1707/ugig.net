@@ -445,7 +445,7 @@ export function EscrowPaymentButton({
       className="gap-2"
     >
       <Shield className="h-4 w-4" />
-      Fund Escrow{budgetAmount ? ` ($${budgetAmount})` : ""}
+      Fund Escrow{budgetAmount ? ` ($${budgetAmount.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })})` : ""}
     </Button>
   );
 }
