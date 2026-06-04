@@ -22,6 +22,15 @@ interface DirectoryOwnerActionsProps {
   };
 }
 
+async function responseError(res: Response, fallback: string) {
+  try {
+    const data = await res.json();
+    return data.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function DirectoryOwnerActions({ listing }: DirectoryOwnerActionsProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -45,49 +54,76 @@ export function DirectoryOwnerActions({ listing }: DirectoryOwnerActionsProps) {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    const res = await fetch(`/api/directory/${listing.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        url,
-        description: description || undefined,
-        tags,
-        logo_url: logoUrl || null,
-        banner_url: bannerUrl || null,
-        screenshot_url: screenshotUrl || null,
-      }),
-    });
+    try {
+      const res = await fetch(`/api/directory/${listing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          url,
+          description: description || undefined,
+          tags,
+          logo_url: logoUrl || null,
+          banner_url: bannerUrl || null,
+          screenshot_url: screenshotUrl || null,
+        }),
+      });
 
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Update failed");
+      if (!res.ok) {
+        setError(await responseError(res, "Update failed"));
+        return;
+      }
+
+      setEditing(false);
+      router.refresh();
+    } catch {
+      setError("Update failed");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setEditing(false);
-    setLoading(false);
-    router.refresh();
   }
 
   async function handleToggleVisibility() {
+    setError("");
     setLoading(true);
-    const newStatus = listing.status === "active" ? "hidden" : "active";
-    await fetch(`/api/directory/${listing.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    setLoading(false);
-    router.refresh();
+    try {
+      const newStatus = listing.status === "active" ? "hidden" : "active";
+      const res = await fetch(`/api/directory/${listing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!res.ok) {
+        setError(await responseError(res, "Visibility update failed"));
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setError("Visibility update failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleDelete() {
     if (!confirm("Delete this listing? This cannot be undone and there is no refund.")) return;
+    setError("");
     setLoading(true);
-    await fetch(`/api/directory/${listing.id}`, { method: "DELETE" });
-    router.push("/directory");
+    try {
+      const res = await fetch(`/api/directory/${listing.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        setError(await responseError(res, "Delete failed"));
+        return;
+      }
+
+      router.push("/directory");
+    } catch {
+      setError("Delete failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (editing) {
@@ -95,7 +131,7 @@ export function DirectoryOwnerActions({ listing }: DirectoryOwnerActionsProps) {
       <div className="mt-6 border-t border-border pt-6">
         <h3 className="font-semibold mb-4">Edit Listing</h3>
         {error && (
-          <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+          <div role="alert" className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
             {error}
           </div>
         )}
@@ -130,7 +166,7 @@ export function DirectoryOwnerActions({ listing }: DirectoryOwnerActionsProps) {
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={loading}>{loading ? "Saving..." : "Save Changes"}</Button>
-            <Button type="button" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => { setError(""); setEditing(false); }}>Cancel</Button>
           </div>
         </form>
       </div>
@@ -140,8 +176,13 @@ export function DirectoryOwnerActions({ listing }: DirectoryOwnerActionsProps) {
   return (
     <div className="mt-6 border-t border-border pt-6">
       <h3 className="text-sm font-medium text-muted-foreground mb-3">Owner Actions</h3>
+      {error && (
+        <div role="alert" className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+          {error}
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+        <Button variant="outline" size="sm" onClick={() => { setError(""); setEditing(true); }}>
           <Pencil className="h-4 w-4 mr-1" />
           Edit
         </Button>
