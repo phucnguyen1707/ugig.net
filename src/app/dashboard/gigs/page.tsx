@@ -9,6 +9,7 @@ import {
   PendingApplicantsDropdown,
   type PendingApplication,
 } from "@/components/gigs/PendingApplicantsDropdown";
+import { ApproveAllButton } from "@/components/gigs/ApproveAllButton";
 import { Plus, ArrowLeft, Eye, Users, Briefcase, Archive } from "lucide-react";
 import { AddToPortfolioPrompt } from "@/components/portfolio/AddToPortfolioPrompt";
 
@@ -182,6 +183,15 @@ export default async function MyGigsPage({ searchParams }: MyGigsPageProps) {
 
                     <GigActions gigId={gig.id} status={gig.status} />
                   </div>
+
+                  {(pendingByGig[gig.id]?.length ?? 0) > 0 && (
+                    <div className="mt-3 flex justify-end">
+                      <ApproveAllButton
+                        gigId={gig.id}
+                        count={pendingByGig[gig.id]?.length ?? 0}
+                      />
+                    </div>
+                  )}
 
                   <PendingApplicantsDropdown
                     gigId={gig.id}
