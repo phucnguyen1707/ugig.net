@@ -12,8 +12,20 @@ import { z } from "zod";
 
 const lineItemSchema = z.object({
   description: z.string().max(500).optional().default(""),
-  amount: z.number().positive("Line item amount must be positive"),
-});
+  // quantity + unit_price is the preferred form; amount is the legacy fallback.
+  quantity: z.number().positive().optional().default(1),
+  unit_price: z.number().positive("Unit price must be positive").optional(),
+  amount: z.number().positive("Line item amount must be positive").optional(),
+}).refine(
+  (d) => (d.unit_price != null && d.unit_price > 0) || (d.amount != null && d.amount > 0),
+  { message: "Provide either a unit price or an amount for each line item" }
+).transform((d) => ({
+  description: d.description ?? "",
+  quantity: d.quantity ?? 1,
+  unit_price: d.unit_price ?? (d.amount ?? 0),
+  // amount is quantity × unit_price; fall back to legacy flat amount
+  amount: d.unit_price != null ? (d.quantity ?? 1) * d.unit_price : (d.amount ?? 0),
+}));
 
 const createInvoiceSchema = z
   .object({
@@ -59,7 +71,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         *,
         worker:profiles!worker_id(id, username, full_name, avatar_url),
         poster:profiles!poster_id(id, username, full_name, avatar_url),
-        items:gig_invoice_items(id, description, amount_usd, position)
+        items:gig_invoice_items(id, description, quantity, unit_price_usd, amount_usd, position)
       `
       )
       .eq("gig_id", gigId)
@@ -348,6 +360,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const rows = lineItems.map((it, idx) => ({
         invoice_id: invoice.id,
         description: (it.description || "").slice(0, 500),
+        quantity: it.quantity ?? 1,
+        unit_price_usd: toUsd(it.unit_price ?? it.amount),
         amount_usd: toUsd(it.amount),
         position: idx,
       }));
@@ -426,6 +440,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           metadata: invoice.metadata,
           items: lineItems.map((it, idx) => ({
             description: it.description ?? "",
+            quantity: it.quantity ?? 1,
+            unit_price_usd: it.unit_price ?? it.amount,
             amount_usd: it.amount,
             position: idx,
           })),

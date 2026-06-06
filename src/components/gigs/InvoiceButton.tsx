@@ -123,8 +123,8 @@ export function InvoiceButton({
   const [walletsLoaded, setWalletsLoaded] = useState(false);
   const [oauthRequired, setOauthRequired] = useState(false);
   const [walletInstructions, setWalletInstructions] = useState<string[]>([]);
-  const [items, setItems] = useState<{ description: string; amount: string }[]>([
-    { description: "", amount: budgetAmount ? budgetAmount.toString() : "" },
+  const [items, setItems] = useState<{ description: string; quantity: string; unit_price: string }[]>([
+    { description: "", quantity: "1", unit_price: budgetAmount ? budgetAmount.toString() : "" },
   ]);
   const [notes, setNotes] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -189,13 +189,19 @@ export function InvoiceButton({
 
   const handleCreateInvoice = async () => {
     const lineItems = items
-      .map((it) => ({ description: it.description.trim(), amount: parseFloat(it.amount) }))
-      .filter((it) => Number.isFinite(it.amount) && it.amount > 0);
+      .map((it) => ({
+        description: it.description.trim(),
+        quantity: parseFloat(it.quantity) || 1,
+        unit_price: parseFloat(it.unit_price),
+      }))
+      .filter((it) => Number.isFinite(it.unit_price) && it.unit_price > 0);
     if (lineItems.length === 0) {
-      setError("Add at least one line item with an amount");
+      setError("Add at least one line item with a unit price");
       return;
     }
-    const total = Math.round(lineItems.reduce((s, it) => s + it.amount, 0) * 100) / 100;
+    const total = Math.round(
+      lineItems.reduce((s, it) => s + it.quantity * it.unit_price, 0) * 100
+    ) / 100;
 
     if (capAmount != null && total > capAmount + 1e-6) {
       const fmt = (n: number) =>
@@ -261,7 +267,7 @@ export function InvoiceButton({
         ...prev,
       ]);
       setShowForm(false);
-      setItems([{ description: "", amount: "" }]);
+      setItems([{ description: "", quantity: "1", unit_price: "" }]);
       setNotes("");
       setDueDate("");
     } catch {
@@ -572,7 +578,7 @@ export function InvoiceButton({
 
 // ── Invoice Form ──
 
-type LineItem = { description: string; amount: string };
+type LineItem = { description: string; quantity: string; unit_price: string };
 
 function InvoiceForm({
   isSats,
@@ -616,13 +622,17 @@ function InvoiceForm({
   onCancel: () => void;
 }) {
   const hasWallets = wallets.length > 0;
-  const total = items.reduce((s, it) => s + (parseFloat(it.amount) || 0), 0);
+  const total = items.reduce((s, it) => {
+    const qty = parseFloat(it.quantity) || 1;
+    const price = parseFloat(it.unit_price) || 0;
+    return s + qty * price;
+  }, 0);
   const overCap = capAmount != null && total > capAmount + 1e-6;
   const fmtAmount = (n: number) =>
     isSats ? `${n.toLocaleString()} sats` : `$${n.toFixed(2)}`;
   const updateItem = (i: number, patch: Partial<LineItem>) =>
     setItems(items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
-  const addItem = () => setItems([...items, { description: "", amount: "" }]);
+  const addItem = () => setItems([...items, { description: "", quantity: "1", unit_price: "" }]);
   const removeItem = (i: number) =>
     setItems(items.length > 1 ? items.filter((_, idx) => idx !== i) : items);
 
@@ -632,51 +642,81 @@ function InvoiceForm({
 
       <div className="space-y-2">
         <label className="text-xs font-medium text-muted-foreground">Charges</label>
-        {items.map((item, i) => (
-          <div key={i} className="flex items-start gap-2">
-            <input
-              type="text"
-              value={item.description}
-              onChange={(e) => updateItem(i, { description: e.target.value })}
-              placeholder="Description (e.g. Logo design)"
-              className="flex-1 text-sm border rounded-md px-2 py-1.5 bg-background"
-            />
-            <div className="relative w-32 shrink-0">
-              {!isSats && (
-                <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  $
-                </span>
-              )}
-              <input
-                type="number"
-                value={item.amount}
-                onChange={(e) => updateItem(i, { amount: e.target.value })}
-                placeholder={isSats ? "0" : "0.00"}
-                min={isSats ? "1" : "0.01"}
-                step={isSats ? "1" : "0.01"}
-                className={`w-full text-sm border rounded-md py-1.5 bg-background ${
-                  isSats ? "pl-2 pr-10" : "pl-5 pr-2"
-                }`}
-              />
-              {isSats && (
-                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                  sats
-                </span>
-              )}
+        {items.map((item, i) => {
+          const qty = parseFloat(item.quantity) || 1;
+          const price = parseFloat(item.unit_price) || 0;
+          const lineTotal = qty * price;
+          return (
+            <div key={i} className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={item.description}
+                  onChange={(e) => updateItem(i, { description: e.target.value })}
+                  placeholder="Description (e.g. PRs merged)"
+                  className="flex-1 text-sm border rounded-md px-2 py-1.5 bg-background"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeItem(i)}
+                  disabled={items.length <= 1}
+                  className="h-8 px-2 text-muted-foreground shrink-0"
+                  aria-label="Remove line item"
+                >
+                  ✕
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 pl-0">
+                {/* Quantity */}
+                <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                  <span>Qty</span>
+                  <input
+                    type="number"
+                    value={item.quantity}
+                    onChange={(e) => updateItem(i, { quantity: e.target.value })}
+                    placeholder="1"
+                    min="0.001"
+                    step="1"
+                    className="w-16 text-sm border rounded-md px-2 py-1 bg-background"
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground">×</span>
+                {/* Unit price */}
+                <div className="relative shrink-0">
+                  {!isSats && (
+                    <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                      $
+                    </span>
+                  )}
+                  <input
+                    type="number"
+                    value={item.unit_price}
+                    onChange={(e) => updateItem(i, { unit_price: e.target.value })}
+                    placeholder={isSats ? "0" : "0.00"}
+                    min={isSats ? "1" : "0.01"}
+                    step={isSats ? "1" : "0.01"}
+                    className={`w-24 text-sm border rounded-md py-1 bg-background ${
+                      isSats ? "pl-2 pr-8" : "pl-5 pr-2"
+                    }`}
+                  />
+                  {isSats && (
+                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                      sats
+                    </span>
+                  )}
+                </div>
+                {/* Line total */}
+                {lineTotal > 0 && (
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    = {fmtAmount(lineTotal)}
+                  </span>
+                )}
+              </div>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => removeItem(i)}
-              disabled={items.length <= 1}
-              className="h-8 px-2 text-muted-foreground"
-              aria-label="Remove line item"
-            >
-              ✕
-            </Button>
-          </div>
-        ))}
+          );
+        })}
         <div className="flex items-center justify-between">
           <Button
             type="button"

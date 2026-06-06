@@ -1,6 +1,8 @@
 interface InvoiceItem {
   id: string;
   description: string | null;
+  quantity?: number | null;
+  unit_price_usd?: number | null;
   amount_usd: number;
   position: number;
 }
@@ -30,17 +32,23 @@ export function InvoiceCharges({
   const crypto = metadata?.amount_crypto;
   const cryptoCurrency = metadata?.payment_currency;
 
+  function formatItem(it: InvoiceItem): { label: string; amount: number } {
+    const qty = Number(it.quantity ?? 1);
+    const unitPrice = Number(it.unit_price_usd ?? it.amount_usd);
+    const total = Number(it.amount_usd);
+    const desc = (it.description || "").trim() || "Charge";
+    const qtyStr = qty % 1 === 0 ? String(qty) : qty.toFixed(2);
+    const showBreakdown = qty !== 1 || (it.unit_price_usd != null && it.unit_price_usd !== it.amount_usd);
+    const label = showBreakdown ? desc + " (" + qtyStr + " x $" + unitPrice.toFixed(2) + ")" : desc;
+    return { label, amount: total };
+  }
+
   const lines =
     items && items.length > 0
-      ? [...items]
-          .sort((a, b) => a.position - b.position)
-          .map((it) => ({
-            label: it.description?.trim() || "Charge",
-            amount: Number(it.amount_usd),
-          }))
+      ? [...items].sort((a, b) => a.position - b.position).map(formatItem)
       : [
           {
-            label: gigTitle ? `Work on “${gigTitle}”` : "Invoice amount",
+            label: gigTitle ? "Work on \"" + gigTitle + "\"" : "Invoice amount",
             amount: amountUsd,
           },
         ];
