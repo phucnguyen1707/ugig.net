@@ -20,7 +20,7 @@ interface Submission {
   submitter_id: string;
   answers: { question_id: string; value: string | string[] }[];
   status: "pending" | "approved" | "rejected";
-  payout_status: "unpaid" | "invoiced" | "paid";
+  payout_status: "unpaid" | "invoiced" | "paid" | "rejected";
   review_notes: string | null;
   reviewed_at: string | null;
   coinpay_invoice_id: string | null;
@@ -58,6 +58,7 @@ export function ReviewPanel({ bountyId, payoutUsd, questions, submissions }: Rev
   const [syncedPayoutStatus, setSyncedPayoutStatus] = useState<
     Record<string, Submission["payout_status"]>
   >({});
+  const [setupRequired, setSetupRequired] = useState<Record<string, boolean>>({});
 
   const questionLabel = (qid: string) => questions.find((q) => q.id === qid)?.label || qid;
   const pollableSubmissions = useMemo(
@@ -134,8 +135,12 @@ export function ReviewPanel({ bountyId, payoutUsd, questions, submissions }: Rev
       const json = await res.json();
       if (!res.ok) {
         setError(json.error || "Failed to create payment link");
+        if (json.setup_required) {
+          setSetupRequired((prev) => ({ ...prev, [sid]: true }));
+        }
         return;
       }
+      setSetupRequired((prev) => ({ ...prev, [sid]: false }));
       if (json.data) {
         setPaymentDetails((prev) => ({
           ...prev,
@@ -148,6 +153,32 @@ export function ReviewPanel({ bountyId, payoutUsd, questions, submissions }: Rev
           },
         }));
       }
+      router.refresh();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const rejectPayment = async (sid: string) => {
+    if (
+      !window.confirm(
+        "Reject the payout for this submission? The submitter will be notified."
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setBusyId(sid);
+    try {
+      const res = await fetch(`/api/bounties/${bountyId}/submissions/${sid}/reject-payment`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error || "Failed to reject payment");
+        return;
+      }
+      setSyncedPayoutStatus((prev) => ({ ...prev, [sid]: "rejected" }));
       router.refresh();
     } finally {
       setBusyId(null);
@@ -243,19 +274,33 @@ export function ReviewPanel({ bountyId, payoutUsd, questions, submissions }: Rev
 
           {s.status === "approved" &&
             (payoutStatus === "unpaid" || (payoutStatus === "invoiced" && !paymentAddress)) && (
-              <Button
-                size="sm"
-                disabled={busyId === s.id}
-                onClick={() => pay(s.id)}
-                className="gap-1"
-              >
-                {busyId === s.id ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <DollarSign className="h-3 w-3" />
+              <>
+                <Button
+                  size="sm"
+                  disabled={busyId === s.id}
+                  onClick={() => pay(s.id)}
+                  className="gap-1"
+                >
+                  {busyId === s.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <DollarSign className="h-3 w-3" />
+                  )}
+                  {payoutStatus === "invoiced" ? "Create new payment request" : `Pay $${payoutUsd}`}
+                </Button>
+                {(setupRequired[s.id] || payoutStatus === "invoiced") && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={busyId === s.id}
+                    onClick={() => rejectPayment(s.id)}
+                    className="gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <XCircle className="h-3 w-3" />
+                    Reject payment
+                  </Button>
                 )}
-                {payoutStatus === "invoiced" ? "Create new payment request" : `Pay $${payoutUsd}`}
-              </Button>
+              </>
             )}
 
           {s.status === "approved" && payoutStatus === "invoiced" && paymentAddress && (
@@ -274,6 +319,12 @@ export function ReviewPanel({ bountyId, payoutUsd, questions, submissions }: Rev
           {payoutStatus === "paid" && (
             <Badge className="gap-1 bg-green-500/10 text-green-600 border-green-500/20">
               <CheckCircle2 className="h-3 w-3" /> Paid
+            </Badge>
+          )}
+
+          {payoutStatus === "rejected" && (
+            <Badge variant="secondary" className="gap-1 text-destructive">
+              <XCircle className="h-3 w-3" /> Payment rejected
             </Badge>
           )}
         </div>
