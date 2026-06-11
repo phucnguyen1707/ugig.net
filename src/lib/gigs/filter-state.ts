@@ -8,6 +8,18 @@ export interface GigFilterSearchParams {
 }
 
 const LOCATION_FILTERS = new Set(["remote", "onsite", "hybrid"]);
+const BUDGET_FILTERS = new Set([
+  "fixed",
+  "hourly",
+  "daily",
+  "weekly",
+  "monthly",
+  "yearly",
+  "per_task",
+  "per_unit",
+  "revenue_share",
+  "bounty",
+]);
 const DEFAULT_SORT = "newest";
 
 const hasText = (value?: string) => Boolean(value?.trim());
@@ -21,7 +33,7 @@ export function hasActiveGigFilters(
     hasText(queryParams.skill) ||
     hasText(queryParams.search) ||
     hasText(queryParams.category) ||
-    hasText(queryParams.budget_type) ||
+    BUDGET_FILTERS.has(queryParams.budget_type || "") ||
     LOCATION_FILTERS.has(queryParams.location_type || "") ||
     (hasText(queryParams.sort) && queryParams.sort !== DEFAULT_SORT)
   );

@@ -14,13 +14,17 @@ describe("hasActiveGigFilters", () => {
     expect(hasActiveGigFilters({}, ["TypeScript"])).toBe(true);
   });
 
+  it("treats skill query params as active filters", () => {
+    expect(hasActiveGigFilters({ skill: "typescript" })).toBe(true);
+  });
+
   it("ignores empty values and the default sort", () => {
     expect(
       hasActiveGigFilters({
         search: " ",
         category: "",
         location_type: "invalid",
-        budget_type: " ",
+        budget_type: "invalid",
         sort: "newest",
       })
     ).toBe(false);
