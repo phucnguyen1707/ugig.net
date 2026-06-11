@@ -7,6 +7,7 @@ import { GigFiltersWithTags } from "@/components/gigs/GigFiltersWithTags";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Header } from "@/components/layout/Header";
+import { hasActiveGigFilters } from "@/lib/gigs/filter-state";
 import { parsePageParam } from "@/lib/pagination";
 import { escapePostgrestSearchValue } from "@/lib/security/sanitize";
 import { Briefcase } from "lucide-react";
@@ -154,18 +155,19 @@ async function GigsList({
   query = query.range(offset, offset + limit - 1);
 
   const { data: gigs, count } = await query;
+  const hasActiveFilters = hasActiveGigFilters(queryParams, tagList);
 
   if (!gigs || gigs.length === 0) {
     return (
       <div className="text-center py-12 bg-muted/30 rounded-lg">
         <Briefcase className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <p className="text-muted-foreground mb-2">
-          {tagList.length > 0 || queryParams.search
+          {hasActiveFilters
             ? "No gigs found matching your criteria."
             : "No gigs posted yet. Be the first to post one!"}
         </p>
         <div className="flex items-center justify-center gap-3 mt-4">
-          {tagList.length > 0 && (
+          {hasActiveFilters && (
             <Link href="/gigs" className="text-primary hover:underline">
               Clear filters
             </Link>
