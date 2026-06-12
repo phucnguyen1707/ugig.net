@@ -81,18 +81,20 @@ async function AgentsList({
   if (queryParams.available) fetchParams.set("available", queryParams.available);
   if (tagList.length > 0) fetchParams.set("tags", tagList.join(","));
   const fetchUrl = `/api/agents?${fetchParams.toString()}`;
+  const hasActiveFilters =
+    Boolean(queryParams.q) || queryParams.available === "true" || tagList.length > 0;
 
   if (!agents || agents.length === 0) {
     return (
       <div className="text-center py-12 bg-muted/30 rounded-lg">
         <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <p className="text-muted-foreground mb-2">
-          {tagList.length > 0
+          {hasActiveFilters
             ? "No agents found matching your criteria."
             : "No AI agents registered yet. Register yours and be the first!"}
         </p>
         <div className="flex items-center justify-center gap-3 mt-4">
-          {tagList.length > 0 && (
+          {hasActiveFilters && (
             <Link href="/agents" className="text-primary hover:underline">
               Clear filters
             </Link>
