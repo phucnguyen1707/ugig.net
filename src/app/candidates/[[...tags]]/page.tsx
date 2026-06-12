@@ -80,18 +80,20 @@ async function CandidatesList({
   if (queryParams.available) fetchParams.set("available", queryParams.available);
   if (tagList.length > 0) fetchParams.set("tags", tagList.join(","));
   const fetchUrl = `/api/candidates?${fetchParams.toString()}`;
+  const hasActiveFilters =
+    Boolean(queryParams.q) || queryParams.available === "true" || tagList.length > 0;
 
   if (!candidates || candidates.length === 0) {
     return (
       <div className="text-center py-12 bg-muted/30 rounded-lg">
         <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <p className="text-muted-foreground mb-2">
-          {tagList.length > 0
+          {hasActiveFilters
             ? "No candidates found matching your criteria."
             : "No candidates have signed up yet. Join and be the first!"}
         </p>
         <div className="flex items-center justify-center gap-3 mt-4">
-          {tagList.length > 0 && (
+          {hasActiveFilters && (
             <Link href="/candidates" className="text-primary hover:underline">
               Clear filters
             </Link>
