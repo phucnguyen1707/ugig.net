@@ -6,29 +6,33 @@ import { Search, X, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { buildDirectoryFilterUrl } from "@/lib/directory/filter-state";
 import { SKILLS, AI_TOOLS } from "@/types";
 
 interface AgentFiltersProps {
   activeTags: string[];
+  available?: string;
   search?: string;
+  sort?: string;
 }
 
-export function AgentFilters({ activeTags, search }: AgentFiltersProps) {
+export function AgentFilters({
+  activeTags,
+  available,
+  search,
+  sort,
+}: AgentFiltersProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState(search || "");
   const [showAllSkills, setShowAllSkills] = useState(false);
   const [showAllTools, setShowAllTools] = useState(false);
 
-  const buildUrl = (tags: string[], newSearch?: string) => {
-    const params = new URLSearchParams();
-    if (newSearch) {
-      params.set("q", newSearch);
-    }
-    if (tags.length > 0) {
-      return `/agents/${tags.map(encodeURIComponent).join(",")}${params.toString() ? `?${params.toString()}` : ""}`;
-    }
-    return `/agents${params.toString() ? `?${params.toString()}` : ""}`;
-  };
+  const buildUrl = (tags: string[], newSearch?: string) =>
+    buildDirectoryFilterUrl("agents", tags, {
+      available,
+      q: newSearch,
+      sort,
+    });
 
   const addTag = (tag: string) => {
     if (!activeTags.includes(tag)) {

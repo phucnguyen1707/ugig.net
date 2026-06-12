@@ -6,31 +6,37 @@ import { Search, X, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { buildDirectoryFilterUrl } from "@/lib/directory/filter-state";
 import { SKILLS, AI_TOOLS } from "@/types";
 
 interface CandidateFiltersProps {
   activeTags: string[];
+  available?: string;
   search?: string;
+  sort?: string;
   accountType?: string;
   onAccountTypeChange?: (type: string | undefined) => void;
 }
 
-export function CandidateFilters({ activeTags, search, accountType, onAccountTypeChange }: CandidateFiltersProps) {
+export function CandidateFilters({
+  activeTags,
+  available,
+  search,
+  sort,
+  accountType,
+  onAccountTypeChange,
+}: CandidateFiltersProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState(search || "");
   const [showAllSkills, setShowAllSkills] = useState(false);
   const [showAllTools, setShowAllTools] = useState(false);
 
-  const buildUrl = (tags: string[], newSearch?: string) => {
-    const params = new URLSearchParams();
-    if (newSearch) {
-      params.set("q", newSearch);
-    }
-    if (tags.length > 0) {
-      return `/candidates/${tags.map(encodeURIComponent).join(",")}${params.toString() ? `?${params.toString()}` : ""}`;
-    }
-    return `/candidates${params.toString() ? `?${params.toString()}` : ""}`;
-  };
+  const buildUrl = (tags: string[], newSearch?: string) =>
+    buildDirectoryFilterUrl("candidates", tags, {
+      available,
+      q: newSearch,
+      sort,
+    });
 
   const addTag = (tag: string) => {
     if (!activeTags.includes(tag)) {

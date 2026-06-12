@@ -7,6 +7,10 @@ import { CandidateLoadMore } from "@/components/candidates/CandidateLoadMore";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Header } from "@/components/layout/Header";
+import {
+  buildDirectoryFilterUrl,
+  hasActiveDirectoryFilters,
+} from "@/lib/directory/filter-state";
 import { Users } from "lucide-react";
 
 interface CandidatesPageProps {
@@ -80,18 +84,19 @@ async function CandidatesList({
   if (queryParams.available) fetchParams.set("available", queryParams.available);
   if (tagList.length > 0) fetchParams.set("tags", tagList.join(","));
   const fetchUrl = `/api/candidates?${fetchParams.toString()}`;
+  const hasActiveFilters = hasActiveDirectoryFilters(queryParams, tagList);
 
   if (!candidates || candidates.length === 0) {
     return (
       <div className="text-center py-12 bg-muted/30 rounded-lg">
         <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <p className="text-muted-foreground mb-2">
-          {tagList.length > 0
+          {hasActiveFilters
             ? "No candidates found matching your criteria."
             : "No candidates have signed up yet. Join and be the first!"}
         </p>
         <div className="flex items-center justify-center gap-3 mt-4">
-          {tagList.length > 0 && (
+          {hasActiveFilters && (
             <Link href="/candidates" className="text-primary hover:underline">
               Clear filters
             </Link>
@@ -157,14 +162,24 @@ export default async function CandidatesPage({ params, searchParams }: Candidate
           </p>
 
           <Suspense fallback={<div className="h-48" />}>
-            <CandidateFilters activeTags={tagList} search={queryParams.q} />
+            <CandidateFilters
+              activeTags={tagList}
+              available={queryParams.available}
+              search={queryParams.q}
+              sort={queryParams.sort}
+            />
           </Suspense>
 
           {/* Sort & Availability filters */}
           <div className="flex flex-wrap gap-4 mt-6 mb-6">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Sort:</span>
-              <SortSelect currentSort={queryParams.sort} tags={tagList} search={queryParams.q} />
+              <SortSelect
+                available={queryParams.available}
+                currentSort={queryParams.sort}
+                tags={tagList}
+                search={queryParams.q}
+              />
             </div>
             <div className="flex items-center gap-2">
               <AvailabilityToggle
@@ -189,22 +204,18 @@ export default async function CandidatesPage({ params, searchParams }: Candidate
 }
 
 function SortSelect({
+  available,
   currentSort,
   tags,
   search,
 }: {
+  available?: string;
   currentSort?: string;
   tags: string[];
   search?: string;
 }) {
-  const buildUrl = (sort: string) => {
-    const params = new URLSearchParams();
-    if (search) params.set("q", search);
-    if (sort && sort !== "newest") params.set("sort", sort);
-    const tagPath = tags.length > 0 ? `/${tags.map(encodeURIComponent).join(",")}` : "";
-    const queryString = params.toString();
-    return `/candidates${tagPath}${queryString ? `?${queryString}` : ""}`;
-  };
+  const buildUrl = (sort: string) =>
+    buildDirectoryFilterUrl("candidates", tags, { available, q: search, sort });
 
   return (
     <div className="flex gap-1">
@@ -247,15 +258,12 @@ function AvailabilityToggle({
   search?: string;
   sort?: string;
 }) {
-  const buildUrl = (available: boolean) => {
-    const params = new URLSearchParams();
-    if (search) params.set("q", search);
-    if (sort) params.set("sort", sort);
-    if (available) params.set("available", "true");
-    const tagPath = tags.length > 0 ? `/${tags.map(encodeURIComponent).join(",")}` : "";
-    const queryString = params.toString();
-    return `/candidates${tagPath}${queryString ? `?${queryString}` : ""}`;
-  };
+  const buildUrl = (available: boolean) =>
+    buildDirectoryFilterUrl("candidates", tags, {
+      available: available ? "true" : undefined,
+      q: search,
+      sort,
+    });
 
   return (
     <Link href={buildUrl(!isAvailable)}>
