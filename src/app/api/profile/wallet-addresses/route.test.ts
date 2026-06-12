@@ -4,7 +4,7 @@ vi.mock("@/lib/auth/get-user", () => ({
   getAuthContext: vi.fn(),
 }));
 
-import { GET } from "./route";
+import { GET, PUT } from "./route";
 import { getAuthContext } from "@/lib/auth/get-user";
 import * as serviceModule from "@/lib/supabase/service";
 
@@ -17,6 +17,14 @@ function req(params?: Record<string, string>) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   }
   return { url: url.toString(), headers: new Headers() } as any;
+}
+
+function putReq(json: () => Promise<unknown>) {
+  return {
+    url: "http://localhost/api/profile/wallet-addresses",
+    headers: new Headers(),
+    json,
+  } as any;
 }
 
 describe("GET /api/profile/wallet-addresses", () => {
@@ -149,5 +157,26 @@ describe("GET /api/profile/wallet-addresses", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.poster_addresses).toEqual([]);
+  });
+});
+
+describe("PUT /api/profile/wallet-addresses", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns 400 for malformed JSON before updating wallet addresses", async () => {
+    const update = vi.fn();
+    const sb = {
+      from: vi.fn().mockReturnValue({
+        update,
+      }),
+    };
+    (getAuthContext as any).mockResolvedValue({ user: { id: USER_ID }, supabase: sb });
+
+    const res = await PUT(putReq(() => Promise.reject(new SyntaxError("bad json"))));
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("Invalid JSON body");
+    expect(update).not.toHaveBeenCalled();
   });
 });
